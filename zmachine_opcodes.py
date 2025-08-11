@@ -77,14 +77,14 @@ class ZProcessor:
         # Opcode dispatch table (simplified set for basic functionality)
         self.opcodes = {
             # 0OP opcodes
-            #0x00: self.op_rtrue,      # rtrue
-            #0x01: self.op_rfalse,     # rfalse
-            #0x02: self.op_print,      # print
-            #0x03: self.op_print_ret,  # print_ret
-            #0x08: self.op_ret_popped, # ret_popped
-            #0x09: self.op_catch,      # catch
-            #0x0A: self.op_quit,       # quit
-            #0x0B: self.op_new_line,   # new_line
+            0xB0: self.op_rtrue,      # rtrue
+            0xB1: self.op_rfalse,     # rfalse
+            0xB2: self.op_print,      # print
+            0xB3: self.op_print_ret,  # print_ret
+            0xB8: self.op_ret_popped, # ret_popped
+            0xB9: self.op_catch,      # catch
+            0xBA: self.op_quit,       # quit
+            0xBB: self.op_new_line,   # new_line
 
             # 1OP opcodes
             0x80: self.op_jz,         # jz
@@ -328,15 +328,15 @@ class ZProcessor:
     def get_byte(self, offset):
         """get byte in memory array"""
         print("debug: get_byte()", offset)
-        value = self.zm.data[offset]
+        value = self.zm.memory[offset]
         print("debug: get_byte() returns",value)
         return value
 
     def get_word(self, offset):
         """get word in memory array"""
         print("debug: get_word(): ",offset)
-        value = self.zm.data[offset] << 8
-        value += self.zm.data[offset + 1]
+        value = self.zm.memory[offset] << 8
+        value += self.zm.memory[offset + 1]
         print("debug: get_word() returns",value)
         return value
 
@@ -346,8 +346,8 @@ class ZProcessor:
         if (offset + 1) > MAX_MEMORY_SIZE:
             print("error: maximum memory reached")
             exit(0)
-        self.zm.data[offset] = (value >> 8) &0xff
-        self.zm.data[offset+1] = value &0xff
+        self.zm.memory[offset] = (value >> 8) &0xff
+        self.zm.memory[offset+1] = value &0xff
         print("debug: set_word() sets value",value," at offset",offset)
 
     def get_object_addr(self, obj):
