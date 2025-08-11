@@ -791,7 +791,7 @@ class ZProcessor:
             random.seed(range)
             result = 0
         elif range > 0:
-            result = random.randomint(1,range)
+            result = random.randint(1,range)
         else:
             random.seed(12345) #zero range?
         print("debug: random() returns",result)
