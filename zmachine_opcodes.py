@@ -291,7 +291,8 @@ class ZProcessor:
                 print("debug: execute full op code ",full_opcode)
                 self.opcodes[full_opcode](operands)
             else:
-                print(f"Unimplemented opcode: 0x{full_opcode:02X}")
+                print(f"Unimplemented opcode: 0x{full_opcode:02X} pc:{self.zm.pc:04X}")
+                sys.exit()
 
         except Exception as e:
             print(f"Execution error at PC 0x{self.zm.pc:04X}: {e}")
@@ -371,9 +372,25 @@ class ZProcessor:
         return value
 
     def get_next_prop(self, prop_addr):
+        """Calculate the address of the next property in a property list."""
         print("debug: get_next_prop()", prop_addr)
-        print("debug get_next_prop() not yet available")
-        sys.exit()
+        value = self.get_byte( prop_addr )
+        prop_addr+=1
+
+        """Calculate the length of this property"""
+
+        if h_type <= 3:
+            value >>= 5;
+        elif not( value & 0x80 ):
+            value >>= 6;
+        else:
+            value = self.get_byte( prop_addr )
+            value &= property_size_mask;
+            if value == 0:
+                value = 64  #spec 1.0
+
+        """Address property length to current property pointer"""
+        return prop_addr + value + 1;
 
     # Opcode implementations (simplified)
     def op_rtrue(self, operands):
@@ -770,7 +787,7 @@ class ZProcessor:
             print(value, property_mask, prop)
             if(value & property_mask ) <= prop:
                 break
-            prop_addr = get_next_prop(prop_addr)
+            prop_addr = self.get_next_prop(prop_addr)
 
         # If the property id was found, store a new value, otherwise complain */
         print("debug 2: ",value, value&property_mask, prop)
@@ -778,9 +795,13 @@ class ZProcessor:
             print("error: store_property(): No such property")
             sys.exit()
 
+        #Determine if this is a byte or word sized property
+        prop_addr+=1
 
-        print("op_put_prop() not yet supported")
-        sys.exit()
+        if h_type <= 3 and not( value & 0xe0 ) or h_type >= 4 and not( value & 0xc0 ):
+            self.set_byte( prop_addr, setvalue )
+        else:
+            self.set_word( prop_addr, setvalue )
 
     #def op_random(self, operands): pass
     def op_random(self, operands):
