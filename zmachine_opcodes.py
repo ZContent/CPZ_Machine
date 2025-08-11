@@ -298,7 +298,7 @@ class ZProcessor:
 
     def branch(self, condition, operands):
         """Handle conditional branch"""
-        print("debug: branch()")
+        print("debug: branch()", condition, operands)
         if not operands:
             return
 
@@ -314,7 +314,7 @@ class ZProcessor:
             self.zm.pc += 1
             branch_offset = ((branch_offset << 8) | second_byte)
             if branch_offset & 0x2000:
-                branch_offset -= 0x4000  # Sign extend
+                branch_offset |= 0xC000  # Sign extend
 
         if condition == branch_on_true:
             if branch_offset == 0:

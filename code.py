@@ -101,7 +101,7 @@ class ZMachine:
     def __init__(self):
         self.story_data = None
         self.data = bytearray(MAX_MEMORY_SIZE)
-        self.memory = bytearray()
+        self.memory = bytearray() # story data
         self.pc = 0  # Program counter
         STACK_SIZE = 1024
         self.call_stack = []
