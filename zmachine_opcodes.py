@@ -7,6 +7,7 @@ interactive fiction games like Zork.
 """
 
 import sys
+import random
 
 # Z-machine instruction types
 LONG_FORM = 0
@@ -783,8 +784,18 @@ class ZProcessor:
 
     #def op_random(self, operands): pass
     def op_random(self, operands):
-        print("op_random() not yet supported")
-        sys.exit()
+        """generate random numbers"""
+        print("debug: op_random()",operands)
+        range = operands[0]
+        if range < 0:
+            random.seed(range)
+            result = 0
+        elif range > 0:
+            result = random.randomint(1,range)
+        else:
+            random.seed(12345) #zero range?
+        print("debug: random() returns",result)
+        self.store_result(result)
 
     #def op_push(self, operands): pass
     def op_push(self, operands):
