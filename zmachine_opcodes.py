@@ -78,74 +78,72 @@ class ZProcessor:
         # Opcode dispatch table (simplified set for basic functionality)
         self.opcodes = {
             # 0OP opcodes
-            0xB0: self.op_rtrue,      # rtrue
-            0xB1: self.op_rfalse,     # rfalse
-            0xB2: self.op_print,      # print
-            0xB3: self.op_print_ret,  # print_ret
-            0xB8: self.op_ret_popped, # ret_popped
-            0xB9: self.op_catch,      # catch
-            0xBA: self.op_quit,       # quit
-            0xBB: self.op_new_line,   # new_line
+            0xB0: [self.op_rtrue,"op_rtrue"],      # rtrue
+            0xB1: [self.op_rfalse,"op_rfalse"],     # rfalse
+            0xB2: [self.op_print,"op_print"],      # print
+            0xB3: [self.op_print_ret,"op_print_ret"],  # print_ret
+            0xB8: [self.op_ret_popped,"op_ret_popped"], # ret_popped
+            0xB9: [self.op_catch,"op_catch"],      # catch
+            0xBA: [self.op_quit,"op_quit"],       # quit
+            0xBB: [self.op_new_line,"op_new_line"],   # new_line
 
             # 1OP opcodes
-            0x80: self.op_jz,         # jz
-            0x81: self.op_get_sibling,# get_sibling
-            0x82: self.op_get_child,  # get_child
-            0x83: self.op_get_parent, # get_parent
-            0x84: self.op_get_prop_len, # get_prop_len
-            0x85: self.op_inc,        # inc
-            0x86: self.op_dec,        # dec
-            0x87: self.op_print_addr, # print_addr
-            0x8B: self.op_ret,        # ret
-            0x8C: self.op_jump,       # jump
-            0x8D: self.op_print_paddr, # print_paddr
-            0x8E: self.op_load,       # load
-            0x8F: self.op_not,        # not (or call_1n in v4+)
+            0x80: [self.op_jz,"op_jz"],         # jz
+            0x81: [self.op_get_sibling,"op_get_sibling"], # get_sibling
+            0x82: [self.op_get_child,"op_get_child"],  # get_child
+            0x83: [self.op_get_parent,"op_get_parent"], # get_parent
+            0x84: [self.op_get_prop_len,"op_get_prop_len"], # get_prop_len
+            0x85: [self.op_inc,"op_inc"],        # inc
+            0x86: [self.op_dec,"op_dec"],        # dec
+            0x87: [self.op_print_addr,"op_print_addr"], # print_addr
+            0x8B: [self.op_ret,"op_ret"],        # ret
+            0x8C: [self.op_jump,"op_jump"],       # jump
+            0x8D: [self.op_print_paddr,"op_print_paddr"], # print_paddr
+            0x8E: [self.op_load,"op_load"],       # load
+            0x8F: [self.op_not,"op_not"],        # not (or call_1n in v4+)
 
             # 2OP opcodes
-            0x01: self.op_je,         # je
-            0x02: self.op_jl,         # jl
-            0x03: self.op_jg,         # jg
-            0x04: self.op_dec_chk,    # dec_chk
-            0x05: self.op_inc_chk,    # inc_chk
-            0x06: self.op_jin,        # jin
-            0x07: self.op_test,       # test
-            0x08: self.op_or,         # or
-            0x09: self.op_and,        # and
-            0x0A: self.op_test_attr,  # test_attr
-            0x0B: self.op_set_attr,   # set_attr
-            0x0C: self.op_clear_attr, # clear_attr
-            0x0D: self.op_store,      # store
-            0x0E: self.op_insert_obj, # insert_obj
-            0x0F: self.op_loadw,      # loadw
-            0x10: self.op_loadb,      # loadb
-            0x11: self.op_get_prop,   # get_prop
-            0x12: self.op_get_prop_addr, # get_prop_addr
-            0x13: self.op_get_next_prop, # get_next_prop
-            0x14: self.op_add,        # add
-            0x15: self.op_sub,        # sub
-            0x16: self.op_mul,        # mul
-            0x17: self.op_div,        # div
-            0x18: self.op_mod,        # mod
+            0x01: [self.op_je,"op_je"],         # je
+            0x02: [self.op_jl,"op_jl"],         # jl
+            0x03: [self.op_jg,"op_jg"],         # jg
+            0x04: [self.op_dec_chk,"op_dec_chk"],   # dec_chk
+            0x05: [self.op_inc_chk,"op_inc_chk"],    # inc_chk
+            0x06: [self.op_jin,"op_jin"],        # jin
+            0x07: [self.op_test,"op_test"],       # test
+            0x08: [self.op_or,"op_or"],         # or
+            0x09: [self.op_and,"op_and"],        # and
+            0x0A: [self.op_test_attr,"op_test_attr"],  # test_attr
+            0x0B: [self.op_set_attr,"op_set_attr"],   # set_attr
+            0x0C: [self.op_clear_attr,"op_clear_attr"], # clear_attr
+            0x0D: [self.op_store,"op_store"],      # store
+            0x0E: [self.op_insert_obj,"op_insert_obj"], # insert_obj
+            0x0F: [self.op_loadw,"op_loadw"],      # loadw
+            0x10: [self.op_loadb,"op_loadb"],      # loadb
+            0x11: [self.op_get_prop,"op_get_prop"],   # get_prop
+            0x12: [self.op_get_prop_addr,"op_get_prop_addr"], # get_prop_addr
+            0x13: [self.op_get_next_prop,"op_get_next_prop"], # get_next_prop
+            0x14: [self.op_add,"op_add"],        # add
+            0x15: [self.op_sub,"op_sub"],        # sub
+            0x16: [self.op_mul,"op_mul"],        # mul
+            0x17: [self.op_div,"op_div"],        # div
+            0x18: [self.op_mod,"op_mod"],        # mod
 
             # VAR opcodes
-            0x20: self.op_call,       # call (call_vs in v4+)
-            0x21: self.op_storew,     # storew
-            0x22: self.op_storeb,     # storeb
-            0x23: self.op_put_prop,   # put_prop
-            0x24: self.op_sread,      # sread (aread in v4+)
-            0x25: self.op_print_char, # print_char
-            0x26: self.op_print_num,  # print_num
-            0x27: self.op_random,     # random
-            0x28: self.op_push,       # push
-            0x29: self.op_pull,       # pull
+            0x20: [self.op_call,"op_call"],       # call (call_vs in v4+)
+            0x21: [self.op_storew,"op_storew"],     # storew
+            0x22: [self.op_storeb,"op_storeb"],     # storeb
+            0x23: [self.op_put_prop,"op_put_prop"],   # put_prop
+            0x24: [self.op_sread,"op_sread"],      # sread (aread in v4+)
+            0x25: [self.op_print_char,"op_print_char"], # print_char
+            0x26: [self.op_print_num,"op_print_num"],  # print_num
+            0x27: [self.op_random,"op_random"],     # random
+            0x28: [self.op_push,"op_push"],       # push
+            0x29: [self.op_pull,"op_pull"],       # pull
         }
-
-
 
     def fetch_instruction(self):
         """Fetch and decode the next instruction"""
-        print("debug: pc = ",self.zm.pc)
+        pccount = self.zm.pc
         if self.zm.pc >= len(self.zm.memory):
             raise RuntimeError("PC out of bounds")
 
@@ -157,7 +155,7 @@ class ZProcessor:
             # Long form: 2OP
             form = LONG_FORM
             opcode = opcode_byte & 0x1F
-            print("debug: 2opcode byte = ",opcode)
+            #print("debug: 2opcode byte = ",opcode)
             operand_count = 2
             operand_types = [
                 SMALL_CONSTANT if (opcode_byte & 0x40) == 0 else VARIABLE,
@@ -167,7 +165,7 @@ class ZProcessor:
             # Short form: 1OP or 0OP
             form = SHORT_FORM
             opcode = opcode_byte & 0x0F
-            print("debug: 1opcode byte = ",opcode)
+            #print("debug: 1opcode byte = ",opcode)
             operand_type = (opcode_byte & 0x30) >> 4
             if operand_type == 3:
                 operand_count = 0
@@ -179,14 +177,14 @@ class ZProcessor:
             # Variable form: VAR
             form = VARIABLE_FORM
             opcode = opcode_byte & 0x1F
-            print("debug: varopcode byte = ",opcode)
+            #print("debug: varopcode byte = ",opcode)
             operand_types = self.decode_operand_types()
             operand_count = len([t for t in operand_types if t != OMITTED])
         else:
             # Variable form: VAR
             form = VARIABLE_FORM
             opcode = opcode_byte & 0x3F
-            print("debug: varopcode byte = ",opcode)
+            #print("debug: varopcode byte = ",opcode)
             operand_types = self.decode_operand_types()
             operand_count = len([t for t in operand_types if t != OMITTED])
 
@@ -205,8 +203,8 @@ class ZProcessor:
                 var_num = self.zm.read_byte(self.zm.pc)
                 operands.append(self.read_variable(var_num))
                 self.zm.pc += 1
-        print("debug: opcode = ",opcode)
-        return opcode, operands, form
+        pccount = self.zm.pc - pccount
+        return opcode, operands, form, pccount
 
     def decode_operand_types(self):
         """Decode operand types for variable form instructions"""
@@ -272,7 +270,7 @@ class ZProcessor:
     def execute_instruction(self):
         """Execute one Z-machine instruction"""
         try:
-            opcode, operands, form = self.fetch_instruction()
+            opcode, operands, form, pccount = self.fetch_instruction()
             self.instruction_count += 1
 
             # Map opcode based on form
@@ -288,8 +286,8 @@ class ZProcessor:
 
             # Execute opcode
             if full_opcode in self.opcodes:
-                print("debug: execute full op code ",full_opcode)
-                self.opcodes[full_opcode](operands)
+                print(f"**pc:0x{(self.zm.pc-pccount):04X}",f"opcode:{full_opcode:02X}",self.opcodes[full_opcode][1],operands)
+                self.opcodes[full_opcode][0](operands)
             else:
                 print(f"Unimplemented opcode: 0x{full_opcode:02X} pc:{self.zm.pc:04X}")
                 sys.exit()
@@ -456,7 +454,6 @@ class ZProcessor:
 
     def op_jg(self, operands):
         """Jump if greater than"""
-        print("debug: op_jg()")
         if len(operands) >= 2:
             # Convert to signed 16-bit
             a = operands[0] if operands[0] < 32768 else operands[0] - 65536
@@ -740,7 +737,6 @@ class ZProcessor:
         if operands[0] == 0:
             self.store_result(0)
         else:
-            print("debug: pc=",self.zm.pc)
             f = Frame
             f.return_pointer = self.zm.pc
             f.arg_count = len(operands)
@@ -748,21 +744,16 @@ class ZProcessor:
             #self.zm.call_stack[--self.zm.sp] = ( self.zm.pc % PAGE_SIZE )
             #self.zm.call_stack[--self.zm.sp] = fp
             self.zm.call_stack.append(f)
-            print("debug 2")
 
             #Create FP for new subroutine and load new PC
 
             #fp = self.zm.sp - 1;
             self.zm.pc = operands[0] * story_scaler
-            print("debug: ",self.zm.sp, ", ", self.zm.pc)
-            #print("op_call() not yet supported")
-            #sys.exit()
+            print(f"debug: sp:ox{self.zm.sp:04X}, pc:0x++{self.zm.pc:04X}")
 
     #def op_storew(self, operands): pass
     def op_storew(self, operands):
         """Store a word in an array of words"""
-        print("debug: op_storew()")
-        print(operands)
         self.set_word(operands[1],operands[2])
 
     #def op_storeb(self, operands): pass
@@ -774,8 +765,6 @@ class ZProcessor:
     def op_put_prop(self, operands):
         """Store a property value in a property list. The property must exist in the
         property list to be replaced."""
-        print("debug: op_put_prop()")
-        print(operands)
         obj = operands[0]
         prop = operands[1]
         setvalue = operands[2]
@@ -806,7 +795,6 @@ class ZProcessor:
     #def op_random(self, operands): pass
     def op_random(self, operands):
         """generate random numbers"""
-        print("debug: op_random()",operands)
         range = operands[0]
         if range < 0:
             random.seed(range)
