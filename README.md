@@ -21,6 +21,7 @@ Copy these libraries to the `lib` folder on your CIRCUITPY drive:
 adafruit_display_text/
 adafruit_display_shapes/
 adafruit_hid/
+adafruit_dang/ (future use for curses support)
 ```
 
 You can download these from the [CircuitPython Library Bundle](https://circuitpython.org/libraries).
@@ -196,11 +197,13 @@ CIRCUITPY/
 ├── lib/                    # CircuitPython libraries
 │   ├── adafruit_display_text/
 │   ├── adafruit_display_shapes/
+│   ├── adafruit_dang/
 │   └── adafruit_hid/
+|   adafruit_dang/
 ├── stories/                # Game files (.z3, .z5, .z8)
 │   ├── zork1.z3
 │   ├── zork2.z3
-│   └── hhgg.z3
+│   └── zork3.z3
 └── saves/                  # Saved games
     ├── quicksave.sav
     └── zork1_save1.sav
@@ -220,6 +223,7 @@ CIRCUITPY/
 - Z-machine specification by Graham Nelson
 - Original JZip interpreter by John Holder
 - CircuitPython DVI support by Adafruit Industries
+- CircuitPython curses support by Adafruit Industries
 
 ## License
 
