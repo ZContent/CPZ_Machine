@@ -527,6 +527,7 @@ class ZProcessor:
             frame = self.zm.call_stack.pop()
             print(f"debug: pointer from 0x{self.zm.pc:04X} to 0x{frame.return_pointer:04X}")
             self.zm.pc = frame.return_pointer + 1
+            self.zm.sp++
 
             # Store return value if needed
             if hasattr(frame,'result_var'):
@@ -739,12 +740,17 @@ class ZProcessor:
             #self.zm.call_stack[--self.zm.sp] = ( self.zm.pc / PAGE_SIZE )
             #self.zm.call_stack[--self.zm.sp] = ( self.zm.pc % PAGE_SIZE )
             #self.zm.call_stack[--self.zm.sp] = fp
+            if self.zm.sp <= 0:
+                print("error: stack is out of memory")
+                sys.exit()
+            self.zm.sp--
             self.zm.call_stack.append(f)
 
             #Create FP for new subroutine and load new PC
 
             #fp = self.zm.sp - 1;
-            self.zm.pc = operands[0] * story_scaler
+            #self.zm.pc = operands[0] * story_scaler
+            self.zm.pc = operands[0]
             print(f"debug: end of op_call(): sp:0x{self.zm.sp:04X}, pc:0x{self.zm.pc:04X}")
 
     #def op_storew(self, operands): pass
