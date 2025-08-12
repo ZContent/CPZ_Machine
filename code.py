@@ -102,7 +102,7 @@ class ZMachine:
         self.memory = bytearray() # story data
         self.pc = 0  # Program counter
         STACK_SIZE = 1024
-        self.call_stack = []
+        self.call_stack = {}
         self.sp = STACK_SIZE - 2
         self.local_vars = []
         self.global_vars = [0] * 240  # Z-machine global variables
