@@ -47,7 +47,6 @@ SUPPORTED_VERSIONS = [3, 5, 8]
 SAVE_DIR = "/saves"
 STORY_DIR = "/stories"
 MAX_STORY_SIZE = 1024 * 1024  # 1MB max story size (plenty of PSRAM available)
-MAX_MEMORY_SIZE = 1024 * 20 # 20KB of entries
 
 # Display configuration for Fruit Jam built-in DVI
 DISPLAY_WIDTH = 640   # Take advantage of higher resolution
@@ -100,7 +99,6 @@ THEMES = {
 class ZMachine:
     def __init__(self):
         self.story_data = None
-        self.data = bytearray(MAX_MEMORY_SIZE)
         self.memory = bytearray() # story data
         self.pc = 0  # Program counter
         STACK_SIZE = 1024

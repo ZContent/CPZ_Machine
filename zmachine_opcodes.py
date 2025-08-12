@@ -59,8 +59,6 @@ else:
     object_size = 14
     property_size_mask = 0x3f;
 
-MAX_MEMORY_SIZE = 1024 * 20 # 20KB of entries
-
 class Frame:
     def __init__(self):
         self.return_pointer = 0 # Program counter
@@ -289,7 +287,7 @@ class ZProcessor:
                 print(f"**pc:0x{(self.zm.pc-pccount):04X}",f"opcode:{full_opcode:02X}",self.opcodes[full_opcode][1],operands)
                 self.opcodes[full_opcode][0](operands)
             else:
-                print(f"Unimplemented opcode: 0x{full_opcode:02X} pc:{self.zm.pc:04X}")
+                print(f"Unimplemented opcode:0x{full_opcode:02X} pc:0x{self.zm.pc:04X}")
                 sys.exit()
 
         except Exception as e:
@@ -343,7 +341,7 @@ class ZProcessor:
     def set_word(self, offset, value):
         """set word in memory array"""
         print("debug: set_word(): ",offset, value)
-        if (offset + 1) > MAX_MEMORY_SIZE:
+        if (offset + 1) > len(self.zm.memory):
             print("error: maximum memory reached")
             exit(0)
         self.zm.memory[offset] = (value >> 8) &0xff
@@ -527,7 +525,7 @@ class ZProcessor:
         print("debug: return_from_routine()")
         if self.zm.call_stack:
             frame = self.zm.call_stack.pop()
-            print("debug: pointer from ",self.zm.pc," to ",frame.return_pointer)
+            print(f"debug: pointer from 0x{self.zm.pc:04X} to 0x{frame.return_pointer:04X}")
             self.zm.pc = frame.return_pointer + 1
 
             # Store return value if needed
@@ -732,8 +730,6 @@ class ZProcessor:
 
     #def op_call(self, operands): pass
     def op_call(self, operands):
-        print("debug in op_call()")
-        print(operands)
         if operands[0] == 0:
             self.store_result(0)
         else:
@@ -749,7 +745,7 @@ class ZProcessor:
 
             #fp = self.zm.sp - 1;
             self.zm.pc = operands[0] * story_scaler
-            print(f"debug: sp:ox{self.zm.sp:04X}, pc:0x++{self.zm.pc:04X}")
+            print(f"debug: end of op_call(): sp:0x{self.zm.sp:04X}, pc:0x{self.zm.pc:04X}")
 
     #def op_storew(self, operands): pass
     def op_storew(self, operands):
