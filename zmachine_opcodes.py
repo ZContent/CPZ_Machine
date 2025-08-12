@@ -32,7 +32,7 @@ PAGE_MASK = 0x1FF
 h_type = 3
 
 if h_type < 4:
-    story_scaler = 2;
+    address_scaler = 2;
     story_shift = 1;
     #property_mask = P3_MAX_PROPERTIES - 1;
 
@@ -42,7 +42,7 @@ if h_type < 4:
     object_size = 9
     property_size_mask = 0xe0;
 elif h_type < V8:
-    story_scaler = 4;
+    address_scaler = 4;
     story_shift = 2;
     #property_mask = P4_MAX_PROPERTIES - 1;
     property_offset = 12
@@ -51,7 +51,7 @@ elif h_type < V8:
     object_size = 14
     property_size_mask = 0x3f;
 else:
-    story_scaler = 8;
+    address_scaler = 8;
     story_shift = 3;
     #property_mask = P4_MAX_PROPERTIES - 1;
     property_offset = 12
@@ -248,14 +248,14 @@ class ZProcessor:
         if var_num == 0:
             # Stack variable
             if self.zm.call_stack:
-                #if 'stack' not in self.zm.call_stack[-1]:
-                #    self.zm.call_stack[-1].stack = []
+                if 'stack' not in self.zm.call_stack[-1]:
+                    self.zm.call_stack[-1].stack = []
                 self.zm.call_stack[-1].stack.append(value)
         elif var_num <= 15:
             # Local variable
             if self.zm.call_stack:
-                #if 'locals' not in self.zm.call_stack[-1]:
-                #    self.zm.call_stack[-1]['locals'] = [0] * 15
+                if 'locals' not in self.zm.call_stack[-1]:
+                    self.zm.call_stack[-1]['locals'] = [0] * 15
                 locals_vars = self.zm.call_stack[-1].locals
                 if var_num - 1 < len(locals_vars):
                     locals_vars[var_num - 1] = value
@@ -525,10 +525,9 @@ class ZProcessor:
         print("debug: return_from_routine()",value)
 
         if self.zm.call_stack:
-            frame = self.zm.call_stack.pop()
-            print(f"debug: pointer from 0x{self.zm.pc:04X} to 0x{frame.return_pointer:04X}")
+            self.zm.pc = self.zm.call_stack[-1].get('stack', []).pop() if self.zm.call_stack[-1].get('stack') else 0
+            print(f"debug: pointer from 0x{self.zm.pc:04X} to 0x{self.zm.pc:04X}")
             self.zm.pc = frame.return_pointer + 1
-            self.zm.sp += 1
 
             # Store return value if needed
             if hasattr(frame,'result_var'):
@@ -735,23 +734,22 @@ class ZProcessor:
         if operands[0] == 0:
             self.store_result(0)
         else:
-            f = Frame
-            f.return_pointer = self.zm.pc
-            f.arg_count = len(operands)
+            #f = Frame
+            #f.return_pointer = self.zm.pc
+            #f.arg_count = len(operands)
             #self.zm.call_stack[--self.zm.sp] = ( self.zm.pc / PAGE_SIZE )
             #self.zm.call_stack[--self.zm.sp] = ( self.zm.pc % PAGE_SIZE )
             #self.zm.call_stack[--self.zm.sp] = fp
-            if self.zm.sp <= 0:
+            if len(self.zm.call_stack) >= self.zm.STACK_SIZE:
                 print("error: stack is out of memory")
                 sys.exit()
-            self.zm.sp -= 1
-            self.zm.call_stack.append(f)
+            self.zm.call_stack.append(self.zm.pc)
 
             #Create FP for new subroutine and load new PC
 
             #fp = self.zm.sp - 1;
-            self.zm.pc = operands[0] * story_scaler
-            print(f"debug: end of op_call(): sp:0x{self.zm.sp:04X}, pc:0x{self.zm.pc:04X}")
+            self.zm.pc = operands[0] * address_scaler
+            print(f"debug: end of op_call(): pc:0x{self.zm.pc:04X}")
 
     #def op_storew(self, operands): pass
     def op_storew(self, operands):
