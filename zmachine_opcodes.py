@@ -760,8 +760,8 @@ class ZProcessor:
 
     #def op_storeb(self, operands): pass
     def op_storeb(self, operands):
-        print("op_storeb() not yet supported")
-        sys.exit()
+        """Store a byte in an array of bytes"""
+        self.set_byte(operands[1],operands[2])
 
     #def op_put_prop(self, operands): pass
     def op_put_prop(self, operands):
