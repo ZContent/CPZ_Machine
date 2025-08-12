@@ -220,7 +220,7 @@ class ZProcessor:
 
     def read_variable(self, var_num):
         """Read value from variable"""
-        print("debug: read_variable()")
+        print("debug: read_variable()",var_num)
         if var_num == 0:
             # Stack variable
             if self.zm.call_stack:
@@ -284,10 +284,10 @@ class ZProcessor:
 
             # Execute opcode
             if full_opcode in self.opcodes:
-                print(f"**pc:0x{(self.zm.pc-pccount):04X}",f"opcode:{full_opcode:02X}",self.opcodes[full_opcode][1],operands)
+                print(f"**pc:0x{(self.zm.pc-pccount):04X}",f"opcode:0x{opcode:02X}/0x{full_opcode:02X}",self.opcodes[full_opcode][1],operands)
                 self.opcodes[full_opcode][0](operands)
             else:
-                print(f"Unimplemented opcode:0x{full_opcode:02X} pc:0x{self.zm.pc:04X}")
+                print(f"Unimplemented opcode:0x{opcode:02X}/0x{full_opcode:02X} pc:0x{self.zm.pc:04X}")
                 sys.exit()
 
         except Exception as e:
@@ -522,12 +522,13 @@ class ZProcessor:
 
     def return_from_routine(self, value):
         """Return from current routine"""
-        print("debug: return_from_routine()")
+        print("debug: return_from_routine()",value)
+
         if self.zm.call_stack:
             frame = self.zm.call_stack.pop()
             print(f"debug: pointer from 0x{self.zm.pc:04X} to 0x{frame.return_pointer:04X}")
             self.zm.pc = frame.return_pointer + 1
-            self.zm.sp++
+            self.zm.sp += 1
 
             # Store return value if needed
             if hasattr(frame,'result_var'):
@@ -743,14 +744,13 @@ class ZProcessor:
             if self.zm.sp <= 0:
                 print("error: stack is out of memory")
                 sys.exit()
-            self.zm.sp--
+            self.zm.sp -= 1
             self.zm.call_stack.append(f)
 
             #Create FP for new subroutine and load new PC
 
             #fp = self.zm.sp - 1;
-            #self.zm.pc = operands[0] * story_scaler
-            self.zm.pc = operands[0]
+            self.zm.pc = operands[0] * story_scaler
             print(f"debug: end of op_call(): sp:0x{self.zm.sp:04X}, pc:0x{self.zm.pc:04X}")
 
     #def op_storew(self, operands): pass
