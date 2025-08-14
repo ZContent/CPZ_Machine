@@ -779,16 +779,10 @@ class ZProcessor:
                 print("error: stack is out of memory")
                 sys.exit()
             print(f"debug: in op_call(), pc=0x{self.zm.pc:04X}")
-            #self.zm.call_stack.append(self.zm.pc)
-            f.return_pointer = self.zm.pc
 
-            #Create FP for new subroutine and load new PC
-
-            #fp = self.zm.sp - 1;
             self.zm.pc = operands[0] * address_scaler
             #Read argument count and initialise local variables
             argc = self.zm.read_byte(self.zm.pc)
-            f.arg_count = argc
             self.zm.pc += 1
             f.stack = []
             for i in range(argc):
@@ -798,6 +792,7 @@ class ZProcessor:
                     #self.zm.call_stack.append(arg)
                     f.stack.append(arg)
             #self.zm.call_stack.append(len(operands))
+            f.return_pointer = self.zm.pc
             self.zm.call_stack.append(f)
             self.print_frame(f)
 
