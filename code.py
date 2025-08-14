@@ -565,7 +565,8 @@ class ZMachine:
                 # Yield control periodically
                 if self.processor.instruction_count % 100 == 0:
                     time.sleep(0.001)  # Small delay to prevent blocking
-            print("debug: game end, stack size:",len(self.call_stack))
+            if not self.game_running :
+                print("debug: game is no longer running (interruped?)")
         except KeyboardInterrupt:
             self.print_text("\nGame interrupted by user")
             self.game_running = False
