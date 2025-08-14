@@ -98,12 +98,15 @@ THEMES = {
 
 class ZMachine:
     def __init__(self):
+        self.DATA_SIZE = 1024*20
+        self.STACK_SIZE = 1024
         self.story_data = None
+        self.story_offset = 0
         self.memory = bytearray() # story data
+        self.data = bytearray()*self.DATA_SIZE #strings are here
         self.pc = 0  # Program counter
-        STACK_SIZE = 1024
-        self.call_stack = {}
-        self.sp = STACK_SIZE - 2
+        self.call_stack = []
+        self.sp = self.STACK_SIZE - 2
         self.local_vars = []
         self.global_vars = [0] * 240  # Z-machine global variables
         self.objects = {}
@@ -119,6 +122,7 @@ class ZMachine:
         self.cursor_col = 0
         self.status_line = ""
         self.z_version = 0
+        self.current_opcode = None # for stack trace (future)
         self.game_running = False
         self.text_labels = []
 
@@ -561,7 +565,7 @@ class ZMachine:
                 # Yield control periodically
                 if self.processor.instruction_count % 100 == 0:
                     time.sleep(0.001)  # Small delay to prevent blocking
-
+            print("debug: game end, stack size:",len(self.call_stack))
         except KeyboardInterrupt:
             self.print_text("\nGame interrupted by user")
             self.game_running = False

@@ -62,8 +62,10 @@ else:
 class Frame:
     def __init__(self):
         self.return_pointer = 0 # Program counter
+        self.variable = 0 # Stack variable
         self.result_var = 0
         self.ctype = FUNCTION
+        self.opcode = 0 # for stack trace
         self.arg_count = 0 # for +V5 versions
         self.stack = []
         self.locals = []
@@ -185,6 +187,7 @@ class ZProcessor:
             #print("debug: varopcode byte = ",opcode)
             operand_types = self.decode_operand_types()
             operand_count = len([t for t in operand_types if t != OMITTED])
+            print("debug: operand_count:",operand_count, "operand_types:",operand_types)
 
         # Fetch operands
         operands = []
@@ -224,14 +227,17 @@ class ZProcessor:
         if var_num == 0:
             # Stack variable
             if self.zm.call_stack:
-                return self.zm.call_stack[-1].get('stack', []).pop() if self.zm.call_stack[-1].get('stack') else 0
+                f = self.zm.call_stack.pop()
+                return f.variable
+                #return self.zm.call_stack[-1].get('stack', []).pop() if self.zm.call_stack[-1].get('stack') else 0
             return 0
         elif var_num <= 15:
             # Local variable
             if self.zm.call_stack:
-                locals_vars = self.zm.call_stack[-1].get('locals', [])
-                if var_num - 1 < len(locals_vars):
-                    return locals_vars[var_num - 1]
+                #locals_vars = self.zm.call_stack[-1].get('locals', [])
+                f = self.zm.call_stack[-1]
+                if hasattr(f, "locals") and var_num - 1 < len(f.locals):
+                    return f.locals[var_num - 1]
             return 0
         else:
             # Global variable
@@ -247,20 +253,25 @@ class ZProcessor:
 
         if var_num == 0:
             # Stack variable
-            if self.zm.call_stack:
-                if 'stack' not in self.zm.call_stack[-1]:
-                    self.zm.call_stack[-1].stack = []
+            print("debug: stack variable")
+            if len(self.zm.call_stack) > 0:
+                #if 'stack' not in self.zm.call_stack[-1]:
+                print("debug: testing 1")
+                if not hasattr( self.zm.call_stack[-1],"stack"):
+                    print("debug: testing 2")
+                    self.zm.call_stack[-1].stack = [0]
                 self.zm.call_stack[-1].stack.append(value)
         elif var_num <= 15:
             # Local variable
+            print("debug: local variable")
             if self.zm.call_stack:
-                if 'locals' not in self.zm.call_stack[-1]:
-                    self.zm.call_stack[-1]['locals'] = [0] * 15
+                self.zm.call_stack[-1].locals = [0] * 15
                 locals_vars = self.zm.call_stack[-1].locals
                 if var_num - 1 < len(locals_vars):
                     locals_vars[var_num - 1] = value
         else:
             # Global variable
+            print("debug: global var")
             global_index = var_num - 16
             if global_index < len(self.zm.global_vars):
                 self.zm.global_vars[global_index] = value
@@ -282,6 +293,7 @@ class ZProcessor:
             else:  # VARIABLE_FORM
                 full_opcode = 0x20 | opcode  # VAR opcodes
 
+            self.zm.opcode = full_opcode
             # Execute opcode
             if full_opcode in self.opcodes:
                 print(f"**pc:0x{(self.zm.pc-pccount):04X}",f"opcode:0x{opcode:02X}/0x{full_opcode:02X}",self.opcodes[full_opcode][1],operands)
@@ -413,7 +425,8 @@ class ZProcessor:
     def op_ret_popped(self, operands):
         """Return popped value from stack"""
         if self.zm.call_stack and 'stack' in self.zm.call_stack[-1]:
-            value = self.zm.call_stack[-1]['stack'].pop() if self.zm.call_stack[-1]['stack'] else 0
+            f = self.zm.call_stack[-1]['stack'].pop()
+            value = f.variable
         else:
             value = 0
         self.return_from_routine(value)
@@ -525,13 +538,19 @@ class ZProcessor:
         print("debug: return_from_routine()",value)
 
         if self.zm.call_stack:
-            self.zm.pc = self.zm.call_stack[-1].get('stack', []).pop() if self.zm.call_stack[-1].get('stack') else 0
-            print(f"debug: pointer from 0x{self.zm.pc:04X} to 0x{self.zm.pc:04X}")
-            self.zm.pc = frame.return_pointer + 1
+            #self.zm.pc = self.zm.call_stack[-1].get('stack', []).pop() if self.zm.call_stack[-1].get('stack') else 0
+            # get operand count
+            f = self.zm.call_stack.pop()
+            print("debug: stack frame:",dir(f)) # to {self.opcodes[f.opcode][1]}()")
+            if hasattr(f,"opcode"):
+                print("debug: return from ",f.opcode)
+            # restore pc
+            newpc = f.return_pointer
+            print(f"debug: pointer from 0x{self.zm.pc:04X} to 0x{newpc:04X}")
+            self.zm.pc = newpc + 1
 
             # Store return value if needed
-            if hasattr(frame,'result_var'):
-                self.write_variable(frame.result_var, value)
+            self.write_variable(newpc, value)
         else:
             self.zm.game_running = False
         print("debug: return from return_from_routine()")
@@ -603,13 +622,18 @@ class ZProcessor:
 
     #def op_print_addr(self, operands): pass
     def op_print_addr(self, operands):
+        """Print using a real address. Real addresses are just offsets into the data region."""
+        print("debug: op_print_addr()",operands)
+        address = operands[0]
+        print("debug: string: ",self.decode_string(self.zm.pc))
         print("op_print_addr() not yet supported")
         sys.exit()
 
     #def op_ret(self, operands): pass
     def op_ret(self, operands):
-        print("op_ret() not yet supported")
-        sys.exit()
+        """Return from subroutine. Restore FP and PC from stack"""
+        print("debug: op_ret()",operands)
+        self.return_from_routine(operands[0])
 
     #def op_jump(self, operands): pass
     def op_jump(self, operands):
@@ -734,21 +758,37 @@ class ZProcessor:
         if operands[0] == 0:
             self.store_result(0)
         else:
-            #f = Frame
-            #f.return_pointer = self.zm.pc
-            #f.arg_count = len(operands)
+            f = Frame
+            f.opcode = self.zm.current_opcode
+            f.return_pointer = self.zm.pc
+            f.arg_count = len(operands)
             #self.zm.call_stack[--self.zm.sp] = ( self.zm.pc / PAGE_SIZE )
             #self.zm.call_stack[--self.zm.sp] = ( self.zm.pc % PAGE_SIZE )
             #self.zm.call_stack[--self.zm.sp] = fp
             if len(self.zm.call_stack) >= self.zm.STACK_SIZE:
                 print("error: stack is out of memory")
                 sys.exit()
-            self.zm.call_stack.append(self.zm.pc)
+            print(f"debug: in op_call(), pc=0x{self.zm.pc:04X}")
+            #self.zm.call_stack.append(self.zm.pc)
+            f.return_pointer = self.zm.pc
 
             #Create FP for new subroutine and load new PC
 
             #fp = self.zm.sp - 1;
             self.zm.pc = operands[0] * address_scaler
+            #Read argument count and initialise local variables
+            argc = self.zm.read_byte(self.zm.pc)
+            f.arg_count = argc
+            self.zm.pc += 1
+            f.stack = []
+            for i in range(argc):
+                if h_type < 4:
+                    arg = self.zm.read_word(self.zm.pc)
+                    self.zm.pc += 2
+                    #self.zm.call_stack.append(arg)
+                    f.stack.append(arg)
+            #self.zm.call_stack.append(len(operands))
+            self.zm.call_stack.append(f)
             print(f"debug: end of op_call(): pc:0x{self.zm.pc:04X}")
 
     #def op_storew(self, operands): pass
