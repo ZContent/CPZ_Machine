@@ -65,7 +65,6 @@ class Frame:
         self.variable = 0 # Stack variable
         self.result_var = 0
         self.ctype = FUNCTION
-        self.opcode = 0 # for stack trace
         self.arg_count = 0 # for +V5 versions
         self.stack = []
         self.locals = []
@@ -221,6 +220,20 @@ class ZProcessor:
 
         return types
 
+    def print_frame(self, frame):
+        print("## stack frame ##")
+        if hasattr(frame,"return_pointer"):
+            print(f"return_pointer: 0x{frame.return_pointer:02X}")
+        if hasattr(frame,"result_var"):
+            print(f"result_var: {frame.result_var}")
+        if hasattr(frame,"variable"):
+            print("variable:",frame.variable)
+        if hasattr(frame,"locals"):
+            print("locals:",frame.locals)
+        if hasattr(frame,"stack"):
+            print("frame stack:",frame.stack)
+        print("## end ##")
+
     def read_variable(self, var_num):
         """Read value from variable"""
         print("debug: read_variable()",var_num)
@@ -296,8 +309,9 @@ class ZProcessor:
             self.zm.opcode = full_opcode
             # Execute opcode
             if full_opcode in self.opcodes:
-                print(f"**pc:0x{(self.zm.pc-pccount):04X}",f"opcode:0x{opcode:02X}/0x{full_opcode:02X}",self.opcodes[full_opcode][1],operands)
+                print(f"**start",self.opcodes[full_opcode][1],operands,f"pc:0x{(self.zm.pc-pccount):04X}",f"opcode:0x{opcode:02X}/0x{full_opcode:02X}")
                 self.opcodes[full_opcode][0](operands)
+                print(f"**end",self.opcodes[full_opcode][1],f"pc:0x{(self.zm.pc):04X}")
             else:
                 print(f"Unimplemented opcode:0x{opcode:02X}/0x{full_opcode:02X} pc:0x{self.zm.pc:04X}")
                 sys.exit()
@@ -541,9 +555,6 @@ class ZProcessor:
             #self.zm.pc = self.zm.call_stack[-1].get('stack', []).pop() if self.zm.call_stack[-1].get('stack') else 0
             # get operand count
             f = self.zm.call_stack.pop()
-            print("debug: stack frame:",dir(f)) # to {self.opcodes[f.opcode][1]}()")
-            if hasattr(f,"opcode"):
-                print("debug: return from ",f.opcode)
             # restore pc
             newpc = f.return_pointer
             print(f"debug: pointer from 0x{self.zm.pc:04X} to 0x{newpc:04X}")
@@ -759,7 +770,6 @@ class ZProcessor:
             self.store_result(0)
         else:
             f = Frame
-            f.opcode = self.zm.current_opcode
             f.return_pointer = self.zm.pc
             f.arg_count = len(operands)
             #self.zm.call_stack[--self.zm.sp] = ( self.zm.pc / PAGE_SIZE )
@@ -789,7 +799,7 @@ class ZProcessor:
                     f.stack.append(arg)
             #self.zm.call_stack.append(len(operands))
             self.zm.call_stack.append(f)
-            print(f"debug: end of op_call(): pc:0x{self.zm.pc:04X}")
+            self.print_frame(f)
 
     #def op_storew(self, operands): pass
     def op_storew(self, operands):
