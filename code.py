@@ -3,6 +3,7 @@ CircuitPython Z-Machine Implementation for Adafruit Fruit Jam
 Port of A2Z Machine to CircuitPython with built-in DVI output
 Based on original A2Z Machine by Dan Cogliano and JZip 2.1
 
+
 Hardware Requirements:
 - Adafruit Fruit Jam (RP2350B with 16MB Flash + 8MB PSRAM)
 - HDMI cable connected to built-in DVI port
@@ -107,7 +108,6 @@ class ZMachine:
         self.pc = 0  # Program counter
         self.call_stack = []
         self.sp = self.STACK_SIZE - 2
-        self.local_vars = []
         self.global_vars = [0] * 240  # Z-machine global variables
         self.objects = {}
         self.dictionary = {}

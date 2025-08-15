@@ -67,12 +67,15 @@ class Frame:
         self.ctype = FUNCTION
         self.arg_count = 0 # for +V5 versions
         self.stack = []
-        self.locals = []
+        self.count = 0
+        self.local_vars = [0]*15
 
 class ZProcessor:
     def __init__(self, zmachine):
         self.zm = zmachine
         self.instruction_count = 0
+        f = Frame
+        self.zm.call_stack.append(f)
 
         # Opcode dispatch table (simplified set for basic functionality)
         self.opcodes = {
@@ -228,8 +231,10 @@ class ZProcessor:
             print(f"result_var: {frame.result_var}")
         if hasattr(frame,"variable"):
             print("variable:",frame.variable)
-        if hasattr(frame,"locals"):
-            print("locals:",frame.locals)
+        if hasattr(frame,"count"):
+            print("local var count:",frame.count)
+        if hasattr(frame,"local_vars"):
+            print("local_vars:",frame.local_vars)
         if hasattr(frame,"stack"):
             print("frame stack:",frame.stack)
         print("## end ##")
@@ -240,17 +245,19 @@ class ZProcessor:
         if var_num == 0:
             # Stack variable
             if self.zm.call_stack:
-                f = self.zm.call_stack.pop()
-                return f.variable
-                #return self.zm.call_stack[-1].get('stack', []).pop() if self.zm.call_stack[-1].get('stack') else 0
+                f = self.zm.call_stack[-1]
+                self.print_frame(f)
+                if(len(f.stack) > 0):
+                    return f.stack[-1]
+                    #return self.zm.call_stack[-1].get('stack', []).pop() if self.zm.call_stack[-1].get('stack') else 0
+                else:
+                    return 0
             return 0
         elif var_num <= 15:
             # Local variable
-            if self.zm.call_stack:
-                #locals_vars = self.zm.call_stack[-1].get('locals', [])
-                f = self.zm.call_stack[-1]
-                if hasattr(f, "locals") and var_num - 1 < len(f.locals):
-                    return f.locals[var_num - 1]
+            f = self.zm.call_stack[-1]
+            if f.local_vars:
+                return f.local_vars[var_num - 1]
             return 0
         else:
             # Global variable
@@ -270,18 +277,20 @@ class ZProcessor:
             if len(self.zm.call_stack) > 0:
                 #if 'stack' not in self.zm.call_stack[-1]:
                 print("debug: testing 1")
-                if not hasattr( self.zm.call_stack[-1],"stack"):
+                f = self.zm.call_stack[-1]
+                if not hasattr( f,"stack"):
                     print("debug: testing 2")
-                    self.zm.call_stack[-1].stack = [0]
-                self.zm.call_stack[-1].stack.append(value)
+                    f.stack.append(value)
         elif var_num <= 15:
             # Local variable
             print("debug: local variable")
-            if self.zm.call_stack:
-                self.zm.call_stack[-1].locals = [0] * 15
-                locals_vars = self.zm.call_stack[-1].locals
-                if var_num - 1 < len(locals_vars):
-                    locals_vars[var_num - 1] = value
+            print("debug: stack count:",len(self.zm.call_stack))
+            f = self.zm.call_stack[-1]
+            self.print_frame(f)
+            if hasattr(f,"local_vars"):
+                print(f"debug: {var_num - 1} = {value}", len(self.zm.call_stack));
+                print(f.local_vars)
+                f.local_vars[var_num -1 ] = value
         else:
             # Global variable
             print("debug: global var")
@@ -547,6 +556,7 @@ class ZProcessor:
         self.zm.pc += 1
         self.write_variable(result_var, value)
 
+
     def return_from_routine(self, value):
         """Return from current routine"""
         print("debug: return_from_routine()",value)
@@ -555,6 +565,8 @@ class ZProcessor:
             #self.zm.pc = self.zm.call_stack[-1].get('stack', []).pop() if self.zm.call_stack[-1].get('stack') else 0
             # get operand count
             f = self.zm.call_stack.pop()
+            print(">> stack size #:", len(self.zm.call_stack),"(pop)")
+
             # restore pc
             newpc = f.return_pointer
             print(f"debug: pointer from 0x{self.zm.pc:04X} to 0x{newpc:04X}")
@@ -618,8 +630,8 @@ class ZProcessor:
 
     #def op_get_prop_len(self, operands): pass
     def op_get_prop_len(self, operands):
-        print("op_get_prop_len() not yet supported")
-        sys.exit()
+        result = self.get_byte(operands[0]) >> 5
+        self.store_result(result)
 
     #def op_inc(self, operands): pass
     def op_inc(self, operands):
@@ -713,13 +725,13 @@ class ZProcessor:
 
     #def op_loadw(self, operands): pass
     def op_loadw(self, operands):
-        print("op_loadw() not yet supported")
-        sys.exit()
+        result = self.zm.read_word(operands[0] + operands[1] * 2)
+        self.store_result(result)
 
     #def op_loadb(self, operands): pass
     def op_loadb(self, operands):
-        print("op_loadb() not yet supported")
-        sys.exit()
+        result = self.zm.read_byte(operands[0] + operands[1])
+        self.store_result(result)
 
     #def op_get_prop(self, operands): pass
     def op_get_prop(self, operands):
@@ -785,16 +797,17 @@ class ZProcessor:
             argc = self.zm.read_byte(self.zm.pc)
             self.zm.pc += 1
             f.stack = []
+            f.count = argc
+            f.local_vars = [0] * 15
+            self.print_frame(f)
             for i in range(argc):
                 if h_type < 4:
-                    arg = self.zm.read_word(self.zm.pc)
+                    #f.local_vars[i] = self.zm.read_word(self.zm.pc)
                     self.zm.pc += 2
-                    #self.zm.call_stack.append(arg)
-                    f.stack.append(arg)
-            #self.zm.call_stack.append(len(operands))
             f.return_pointer = self.zm.pc
-            self.zm.call_stack.append(f)
             self.print_frame(f)
+            self.zm.call_stack.append(f)
+            print(">> stack size #", len(self.zm.call_stack),"(append)")
 
     #def op_storew(self, operands): pass
     def op_storew(self, operands):
