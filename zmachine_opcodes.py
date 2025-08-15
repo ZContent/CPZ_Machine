@@ -75,6 +75,7 @@ class ZProcessor:
         self.zm = zmachine
         self.instruction_count = 0
         f = Frame
+        f.return_pointer = self.zm.read_word(0x06)  # Initial PC
         self.zm.call_stack.append(f)
 
         # Opcode dispatch table (simplified set for basic functionality)
@@ -278,7 +279,7 @@ class ZProcessor:
                 #if 'stack' not in self.zm.call_stack[-1]:
                 print("debug: testing 1")
                 f = self.zm.call_stack[-1]
-                if not hasattr( f,"stack"):
+                if hasattr( f,"stack"):
                     print("debug: testing 2")
                     f.stack.append(value)
         elif var_num <= 15:
@@ -286,11 +287,12 @@ class ZProcessor:
             print("debug: local variable")
             print("debug: stack count:",len(self.zm.call_stack))
             f = self.zm.call_stack[-1]
-            self.print_frame(f)
             if hasattr(f,"local_vars"):
                 print(f"debug: {var_num - 1} = {value}", len(self.zm.call_stack));
                 print(f.local_vars)
                 f.local_vars[var_num -1 ] = value
+            self.print_frame(f)
+
         else:
             # Global variable
             print("debug: global var")
@@ -556,7 +558,6 @@ class ZProcessor:
         self.zm.pc += 1
         self.write_variable(result_var, value)
 
-
     def return_from_routine(self, value):
         """Return from current routine"""
         print("debug: return_from_routine()",value)
@@ -566,6 +567,10 @@ class ZProcessor:
             # get operand count
             f = self.zm.call_stack.pop()
             print(">> stack size #:", len(self.zm.call_stack),"(pop)")
+            if len(self.zm.call_stack) == 0:
+                print("***ERROR: call stack is empty")
+                self.zm.game_running = False
+                return
 
             # restore pc
             newpc = f.return_pointer
@@ -783,7 +788,7 @@ class ZProcessor:
         else:
             f = Frame
             f.return_pointer = self.zm.pc
-            f.arg_count = len(operands)
+            #f.arg_count = len(operands)
             #self.zm.call_stack[--self.zm.sp] = ( self.zm.pc / PAGE_SIZE )
             #self.zm.call_stack[--self.zm.sp] = ( self.zm.pc % PAGE_SIZE )
             #self.zm.call_stack[--self.zm.sp] = fp
@@ -795,11 +800,11 @@ class ZProcessor:
             self.zm.pc = operands[0] * address_scaler
             #Read argument count and initialise local variables
             argc = self.zm.read_byte(self.zm.pc)
+            f.arg_count = argc
             self.zm.pc += 1
             f.stack = []
             f.count = argc
             f.local_vars = [0] * 15
-            self.print_frame(f)
             for i in range(argc):
                 if h_type < 4:
                     #f.local_vars[i] = self.zm.read_word(self.zm.pc)
