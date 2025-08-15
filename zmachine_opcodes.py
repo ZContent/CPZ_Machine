@@ -331,11 +331,9 @@ class ZProcessor:
             print(f"Execution error at PC 0x{self.zm.pc:04X}: {e}")
             self.zm.game_running = False
 
-    def branch(self, condition, operands):
+    def branch(self, condition):
         """Handle conditional branch"""
-        print("debug: branch()", condition, operands)
-        if not operands:
-            return
+        print("debug: branch()", condition)
 
         branch_byte = self.zm.read_byte(self.zm.pc)
         self.zm.pc += 1
@@ -350,7 +348,7 @@ class ZProcessor:
             branch_offset = ((branch_offset << 8) | second_byte)
             if branch_offset & 0x2000:
                 branch_offset |= 0xC000  # Sign extend
-
+            print(f"debug: branch_offset=0x{branch_offset:0X}")
         if condition == branch_on_true:
             if branch_offset == 0:
                 self.op_rfalse([])
@@ -467,7 +465,7 @@ class ZProcessor:
     def op_jz(self, operands):
         """Jump if zero"""
         if operands:
-            self.branch(operands[0] == 0, operands)
+            self.branch(operands[0] == 0)
 
     def op_je(self, operands):
         """Jump if equal"""
@@ -478,7 +476,7 @@ class ZProcessor:
                 if operands[0] == operands[i]:
                     condition = True
                     break
-            self.branch(condition, operands)
+            self.branch(condition)
 
     def op_jl(self, operands):
         """Jump if less than"""
@@ -486,7 +484,7 @@ class ZProcessor:
             # Convert to signed 16-bit
             a = operands[0] if operands[0] < 32768 else operands[0] - 65536
             b = operands[1] if operands[1] < 32768 else operands[1] - 65536
-            self.branch(a < b, operands)
+            self.branch(a < b)
 
     def op_jg(self, operands):
         """Jump if greater than"""
@@ -494,7 +492,7 @@ class ZProcessor:
             # Convert to signed 16-bit
             a = operands[0] if operands[0] < 32768 else operands[0] - 65536
             b = operands[1] if operands[1] < 32768 else operands[1] - 65536
-            self.branch(a > b, operands)
+            self.branch(a > b)
 
     def op_load(self, operands):
         """Load variable"""
@@ -667,8 +665,12 @@ class ZProcessor:
     def op_jump(self, operands):
         print("op_jump()", operands[0])
         ptr = operands[0]
+        if 0x8000 & ptr != 0:
+            # negative #, make it so
+            ptr = ptr - 0xffff
+            print("debug: number is now negative", ptr)
         print(f"debug: jump from 0x{self.zm.pc:04X} to 0x{(self.zm.pc+ptr):04X}")
-        self.zm.pc += ptr
+        self.zm.pc += ptr - 2
 
     #def op_print_paddr(self, operands): pass
     def op_print_paddr(self, operands):
@@ -683,8 +685,13 @@ class ZProcessor:
 
     #def op_dec_chk(self, operands): pass
     def op_dec_chk(self, operands):
-        print("op_dec_chk() not yet supported")
-        sys.exit()
+        result = operands[0] - 1
+        self.store_result(result)
+        if len(operands) >= 2:
+            # Convert to signed 16-bit
+            a = result if result < 32768 else result - 65536
+            b = operands[1] if operands[1] < 32768 else operands[1] - 65536
+            self.branch(a < b)
 
     #def op_inc_chk(self, operands): pass
     def op_inc_chk(self, operands):
@@ -698,8 +705,7 @@ class ZProcessor:
 
     #def op_test(self, operands): pass
     def op_test(self, operands):
-        print("op_test() not yet supported")
-        sys.exit()
+        self.branch((( ~operands[0] ) & operands[1]) == 0)
 
     #def op_or(self, operands): pass
     def op_or(self, operands):
