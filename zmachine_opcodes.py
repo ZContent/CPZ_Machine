@@ -640,13 +640,13 @@ class ZProcessor:
 
     #def op_inc(self, operands): pass
     def op_inc(self, operands):
-        print("op_inc() not yet supported")
-        sys.exit()
+        result = operands[0] + 1
+        self.store_result(result)
 
     #def op_dec(self, operands): pass
     def op_dec(self, operands):
-        print("op_dec() not yet supported")
-        sys.exit()
+        result = operands[0] - 1
+        self.store_result(result)
 
     #def op_print_addr(self, operands): pass
     def op_print_addr(self, operands):
@@ -665,8 +665,10 @@ class ZProcessor:
 
     #def op_jump(self, operands): pass
     def op_jump(self, operands):
-        print("op_jump() not yet supported")
-        sys.exit()
+        print("op_jump()", operands[0])
+        ptr = operands[0]
+        print(f"debug: jump from 0x{self.zm.pc:04X} to 0x{(self.zm.pc+ptr):04X}")
+        self.zm.pc += ptr
 
     #def op_print_paddr(self, operands): pass
     def op_print_paddr(self, operands):
@@ -675,8 +677,9 @@ class ZProcessor:
 
     #def op_not(self, operands): pass
     def op_not(self, operands):
-        print("op_not() not yet supported")
-        sys.exit()
+        print("op_not()",operands[0])
+        result = ~operands[0]
+        self.store_result(result)
 
     #def op_dec_chk(self, operands): pass
     def op_dec_chk(self, operands):
@@ -700,13 +703,19 @@ class ZProcessor:
 
     #def op_or(self, operands): pass
     def op_or(self, operands):
-        print("op_or() not yet supported")
-        sys.exit()
+        print("op_or()",operands[0])
+        result = 0
+        if len(operands) >= 2:
+            result = operands[0] | operands[1]
+        self.store_result(result)
 
     #def op_and(self, operands): pass
     def op_and(self, operands):
-        print("op_and() not yet supported")
-        sys.exit()
+        print("op_or()",operands[0])
+        result = 0
+        if len(operands) >= 2:
+            result = operands[0] & operands[1]
+        self.store_result(result)
 
     #def op_test_attr(self, operands): pass
     def op_test_attr(self, operands):
