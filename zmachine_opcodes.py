@@ -198,17 +198,22 @@ class ZProcessor:
             if op_type == OMITTED:
                 break
             elif op_type == LARGE_CONSTANT:
-                operands.append(self.zm.read_word(self.zm.pc))
+                value = self.zm.read_word(self.zm.pc)
+                #print(f"debug fetch instruction: read large constant: pc=0x{self.zm.pc:02X}, value={value}");
                 self.zm.pc += 2
+                operands.append(value)
             elif op_type == SMALL_CONSTANT:
-                operands.append(self.zm.read_byte(self.zm.pc))
+                value = self.zm.read_byte(self.zm.pc)
+                #print(f"debug fetch instruction: read small constant: pc=0x{self.zm.pc:02X}, value={value}");
                 self.zm.pc += 1
+                operands.append(value)
             elif op_type == VARIABLE:
                 var_num = self.zm.read_byte(self.zm.pc)
-                operands.append(self.read_variable(var_num))
+                #print(f"debug fetch instruction: read variable: pc=0x{self.zm.pc:02X}, var_num={var_num}");
                 self.zm.pc += 1
+                operands.append(self.read_variable(var_num))
         pccount = self.zm.pc - pccount
-        return opcode, operands, form, pccount
+        return opcode, operands, form, pccount, opcode_byte
 
     def decode_operand_types(self):
         """Decode operand types for variable form instructions"""
@@ -245,6 +250,7 @@ class ZProcessor:
         print("debug: read_variable()",var_num)
         if var_num == 0:
             # Stack variable
+            print("debug: read stack variable")
             if self.zm.call_stack:
                 f = self.zm.call_stack[-1]
                 self.print_frame(f)
@@ -257,12 +263,15 @@ class ZProcessor:
         elif var_num <= 15:
             # Local variable
             f = self.zm.call_stack[-1]
-            if f.local_vars:
+            if hasattr(f,"local_vars"):
+                print(f"debug: read local var {var_num - 1}: ",f.local_vars[var_num - 1],f.local_vars)
                 return f.local_vars[var_num - 1]
+
             return 0
         else:
             # Global variable
             global_index = var_num - 16
+            print(f"read global var {global_index}: {self.zm.global_vars[global_index]}")
             if global_index < len(self.zm.global_vars):
                 return self.zm.global_vars[global_index]
             return 0
@@ -274,7 +283,7 @@ class ZProcessor:
 
         if var_num == 0:
             # Stack variable
-            print("debug: stack variable")
+            print("debug: write stack variable")
             if len(self.zm.call_stack) > 0:
                 #if 'stack' not in self.zm.call_stack[-1]:
                 print("debug: testing 1")
@@ -284,26 +293,23 @@ class ZProcessor:
                     f.stack.append(value)
         elif var_num <= 15:
             # Local variable
-            print("debug: local variable")
-            print("debug: stack count:",len(self.zm.call_stack))
+            if value > 0 and (value & 0x800) != 0:
+                value = value - 0x10000 # make negative
             f = self.zm.call_stack[-1]
             if hasattr(f,"local_vars"):
-                print(f"debug: {var_num - 1} = {value}", len(self.zm.call_stack));
-                print(f.local_vars)
                 f.local_vars[var_num -1 ] = value
-            self.print_frame(f)
-
+                print(f"debug: write local var {var_num - 1}: {value}",f.local_vars);
         else:
             # Global variable
-            print("debug: global var")
             global_index = var_num - 16
+            print(f"write global var {global_index}: {value}")
             if global_index < len(self.zm.global_vars):
                 self.zm.global_vars[global_index] = value
 
     def execute_instruction(self):
         """Execute one Z-machine instruction"""
         try:
-            opcode, operands, form, pccount = self.fetch_instruction()
+            opcode, operands, form, pccount, opcode_byte = self.fetch_instruction()
             self.instruction_count += 1
 
             # Map opcode based on form
@@ -320,7 +326,7 @@ class ZProcessor:
             self.zm.opcode = full_opcode
             # Execute opcode
             if full_opcode in self.opcodes:
-                print(f"**start",self.opcodes[full_opcode][1],operands,f"pc:0x{(self.zm.pc-pccount):04X}",f"opcode:0x{opcode:02X}/0x{full_opcode:02X}")
+                print(f"**start {self.instruction_count}:", self.opcodes[full_opcode][1],operands,f"pc:0x{(self.zm.pc-pccount):04X}",f"opcode:0x{opcode_byte:02X}/0x{opcode:02X}/0x{full_opcode:02X}")
                 self.opcodes[full_opcode][0](operands)
                 print(f"**end",self.opcodes[full_opcode][1],f"pc:0x{(self.zm.pc):04X}")
             else:
@@ -331,32 +337,53 @@ class ZProcessor:
             print(f"Execution error at PC 0x{self.zm.pc:04X}: {e}")
             self.zm.game_running = False
 
+    """
+     Notes from c source code:
+     Take a jump after an instruction based on the flag, either true or false. The
+     jump can be modified by the change logic flag. Normally jumps are taken
+     when the flag is true. When the change logic flag is set then the jump is
+     taken when flag is false. A PC relative jump can also be taken. This jump can
+     either be a positive or negative byte or word range jump. An additional
+     feature is the return option. If the jump offset is zero or one then that
+     literal value is passed to the return instruction, instead of a jump being
+     taken. Complicated or what!
+    """
     def branch(self, condition):
         """Handle conditional branch"""
         print("debug: branch()", condition)
+        print(f"debug: pc = 0x{self.zm.pc:02X}")
 
         branch_byte = self.zm.read_byte(self.zm.pc)
-        self.zm.pc += 1
+        self.zm.pc = self.zm.pc + 1
+        print(f"debug: branch_byte 1:0x{branch_byte:02X}")
 
-        branch_on_true = (branch_byte & 0x80) != 0
+        branch_on_true = condition
+        if (branch_byte & 0x80) != 0:
+            branch_on_true = not branch_on_true
         branch_offset = branch_byte & 0x3F
-
+        print("debug: branch_on_true:",branch_on_true)
+        print(f"debug: pc = 0x{self.zm.pc:02X}")
         if (branch_byte & 0x40) == 0:
             # Two-byte offset
             second_byte = self.zm.read_byte(self.zm.pc)
             self.zm.pc += 1
-            branch_offset = ((branch_offset << 8) | second_byte)
+            print(f"debug: branch_byte 2:0x{second_byte:02X}")
+            branch_offset = ((branch_byte << 8) | second_byte)
             if branch_offset & 0x2000:
                 branch_offset |= 0xC000  # Sign extend
+            if branch_offset > 0 and branch_offset & 0x8000 :
+                branch_offset -= 0x10000 # make negative
             print(f"debug: branch_offset=0x{branch_offset:0X}")
-        if condition == branch_on_true:
+        if branch_on_true == True:
+            print("debug: branch_on_true:",branch_on_true)
+            print(f"debug: branch offset is 0x{branch_offset:04X}")
             if branch_offset == 0:
                 self.op_rfalse([])
             elif branch_offset == 1:
                 self.op_rtrue([])
             else:
                 self.zm.pc += branch_offset - 2
-        print("debug: return branch()")
+        print(f"debug: return branch(), branch_offset = 0x{branch_offset:04X}, pc = 0x{self.zm.pc:04X}")
 
     def get_byte(self, offset):
         """get byte in memory array"""
@@ -469,6 +496,7 @@ class ZProcessor:
 
     def op_je(self, operands):
         """Jump if equal"""
+        print(f"debug: op_je() pc = 0x{self.zm.pc:04X}")
         if len(operands) >= 2:
             condition = operands[0] == operands[1]
             # Check additional operands
@@ -509,13 +537,13 @@ class ZProcessor:
     def op_add(self, operands):
         """Add two values"""
         if len(operands) >= 2:
-            result = (operands[0] + operands[1]) & 0xFFFF
+            result = (operands[0] + operands[1]) #& 0xFFFF
             self.store_result(result)
 
     def op_sub(self, operands):
         """Subtract two values"""
         if len(operands) >= 2:
-            result = (operands[0] - operands[1]) & 0xFFFF
+            result = (operands[0] - operands[1]) #& 0xFFFF
             self.store_result(result)
 
     def op_print_char(self, operands):
@@ -566,7 +594,7 @@ class ZProcessor:
             f = self.zm.call_stack.pop()
             print(">> stack size #:", len(self.zm.call_stack),"(pop)")
             if len(self.zm.call_stack) == 0:
-                print("***ERROR: call stack is empty")
+                self.zm.print_error("call stack is empty")
                 self.zm.game_running = False
                 return
 
@@ -665,10 +693,9 @@ class ZProcessor:
     def op_jump(self, operands):
         print("op_jump()", operands[0])
         ptr = operands[0]
-        if 0x8000 & ptr != 0:
+        if ptr > 0 and ptr & 0x8000 != 0:
             # negative #, make it so
-            ptr = ptr - 0xffff
-            print("debug: number is now negative", ptr)
+            ptr = ptr - 0x10000
         print(f"debug: jump from 0x{self.zm.pc:04X} to 0x{(self.zm.pc+ptr):04X}")
         self.zm.pc += ptr - 2
 
@@ -801,29 +828,45 @@ class ZProcessor:
         if operands[0] == 0:
             self.store_result(0)
         else:
+            for i in range(1,len(operands)):
+                if operands[i] > 0 and operands[i] & 0x8000:
+                    operands[i] = operands[i] - 0x10000 # make negative
             f = Frame
             f.return_pointer = self.zm.pc
-            #f.arg_count = len(operands)
-            #self.zm.call_stack[--self.zm.sp] = ( self.zm.pc / PAGE_SIZE )
-            #self.zm.call_stack[--self.zm.sp] = ( self.zm.pc % PAGE_SIZE )
-            #self.zm.call_stack[--self.zm.sp] = fp
             if len(self.zm.call_stack) >= self.zm.STACK_SIZE:
                 print("error: stack is out of memory")
                 sys.exit()
             print(f"debug: in op_call(), pc=0x{self.zm.pc:04X}")
 
             self.zm.pc = operands[0] * address_scaler
+            argc = len(operands)
             #Read argument count and initialise local variables
-            argc = self.zm.read_byte(self.zm.pc)
-            f.arg_count = argc
+            args = self.zm.read_byte(self.zm.pc)
             self.zm.pc += 1
+            f.arg_count = argc - 1
             f.stack = []
             f.count = argc
             f.local_vars = [0] * 15
-            for i in range(argc):
+            i = 1
+            argc = argc - 1 # don't include first operand
+            while args > 0:
+                args -= 1
                 if h_type < 4:
-                    #f.local_vars[i] = self.zm.read_word(self.zm.pc)
+                    arg = self.zm.read_word(self.zm.pc)
                     self.zm.pc += 2
+                    if arg > 0 and arg & 0x8000 != 0:
+                        arg = arg - 0x10000 # make negative
+                    if argc > 0:
+                        value = operands[i]
+                        print(f"debug: operand[{i}] is {value}")
+                        #if value & 0x8000 != 0:
+                        #    value = value - 0x10000 # make negative
+                        f.local_vars[i-1] = value
+                    else:
+                        f.local_vars[i-1] = arg
+                    argc -= 1
+                    print(f"debug: local var {i-1} is {f.local_vars[i-1]}")
+                    i += 1
             f.return_pointer = self.zm.pc
             self.print_frame(f)
             self.zm.call_stack.append(f)

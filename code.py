@@ -386,7 +386,7 @@ class ZMachine:
     def print_error(self, error_msg):
         """Print error message in error color"""
         #debug
-        print("error: ", error_msg)
+        print("*** ERROR: ", error_msg)
         return
         #end debug
         theme = THEMES[self.current_theme]
