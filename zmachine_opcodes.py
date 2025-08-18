@@ -610,14 +610,9 @@ class ZProcessor:
                 return
 
             # restore pc
-            newpc = f.return_pointer
+            newpc = self.zm.call_stack[-1].return_pointer
             self.zm.pc = newpc + 1
             print(f"debug: pointer from 0x{self.zm.pc:04X} to 0x{newpc:04X}")
-
-            # Store return value if needed
-            #result_var = self.zm.read_byte(self.zm.pc)
-            #self.zm.pc += 1
-            #self.write_variable(result_var,newpc)
         else:
             self.zm.game_running = False
         print("debug: return from return_from_routine()")
