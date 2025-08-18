@@ -262,6 +262,7 @@ class ZProcessor:
             return 0
         elif var_num <= 15:
             # Local variable
+            print("debug: read local var")
             f = self.zm.call_stack[-1]
             if hasattr(f,"local_vars"):
                 print(f"debug: read local var {var_num - 1}: ",f.local_vars[var_num - 1],f.local_vars)
@@ -271,6 +272,7 @@ class ZProcessor:
         else:
             # Global variable
             global_index = var_num - 16
+            print(f"debug: index:{global_index}, var mem start: 0x{self.zm.variables_addr:02X}, address: 0x{(self.zm.variables_addr+global_index*2):04X}")
             value = self.zm.memory[self.zm.variables_addr + global_index*2] << 8 | self.zm.memory[self.zm.variables_addr + global_index*2+1]
             print(f"read global var {global_index}: {value}")
             return value
@@ -310,6 +312,9 @@ class ZProcessor:
         try:
             opcode, operands, form, pccount, opcode_byte = self.fetch_instruction()
             self.instruction_count += 1
+            if self.instruction_count > 100:
+                print("debug: 100 instruction limit reached")
+                sys.exit()
 
             # Map opcode based on form
             if form == LONG_FORM:
@@ -357,7 +362,7 @@ class ZProcessor:
         print(f"debug: branch_byte 1:0x{branch_byte:02X}")
 
         branch_on_true = condition
-        if (branch_byte & 0x80) != 0:
+        if (branch_byte & 0x80) == 0:
             branch_on_true = not branch_on_true
         branch_offset = branch_byte & 0x3F
         print("debug: branch_on_true:",branch_on_true)
