@@ -272,9 +272,10 @@ class ZProcessor:
         else:
             # Global variable
             global_index = var_num - 16
-            print(f"debug: index:{global_index}, var mem start: 0x{self.zm.variables_addr:02X}, address: 0x{(self.zm.variables_addr+global_index*2):04X}")
-            value = self.zm.memory[self.zm.variables_addr + global_index*2] << 8 | self.zm.memory[self.zm.variables_addr + global_index*2+1]
-            print(f"read global var {global_index}: {value}")
+            addr = self.zm.variables_addr+global_index*2
+            print(f"debug: index:{global_index}, var mem start: 0x{self.zm.variables_addr:04X}, address: 0x{addr:04X}")
+            value = self.zm.memory[addr] << 8 | self.zm.memory[addr+1]
+            print(f"read global var {global_index} from 0x{addr:04x}: {value}")
             return value
 
     def write_variable(self, var_num, value):
@@ -304,8 +305,10 @@ class ZProcessor:
             # Global variable
             global_index = var_num - 16
             addr = self.zm.memory[self.zm.variables_addr + global_index*2]
+            print(f"debug: index:{global_index}, var mem start: 0x{self.zm.variables_addr:04X}, address: 0x{addr:04X}")
             self.zm.memory[addr] = value >> 8
             self.zm.memory[addr+1] = value &0xff
+            print(f"write global var {global_index} to 0x{addr:04x}: {value}")
 
     def execute_instruction(self):
         """Execute one Z-machine instruction"""
