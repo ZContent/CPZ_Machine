@@ -77,7 +77,8 @@ class ZProcessor:
         f = Frame
         f.return_pointer = self.zm.read_word(0x06)  # Initial PC
         self.zm.call_stack.append(f)
-
+        print(f"debug: new frame {len(self.zm.call_stack)}:")
+        self.print_frame(f)
         # Opcode dispatch table (simplified set for basic functionality)
         self.opcodes = {
             # 0OP opcodes
@@ -274,7 +275,8 @@ class ZProcessor:
             global_index = var_num - 16
             addr = self.zm.variables_addr+global_index*2
             print(f"debug: index:{global_index}, var mem start: 0x{self.zm.variables_addr:04X}, address: 0x{addr:04X}")
-            value = self.zm.memory[addr] << 8 | self.zm.memory[addr+1]
+            #value = self.zm.memory[addr] << 8 | self.zm.memory[addr+1]
+            value = self.zm.read_word(addr)
             print(f"read global var {global_index} from 0x{addr:04x}: {value}")
             return value
 
@@ -304,10 +306,11 @@ class ZProcessor:
         else:
             # Global variable
             global_index = var_num - 16
-            addr = self.zm.memory[self.zm.variables_addr + global_index*2]
+            addr = self.zm.variables_addr + global_index*2
             print(f"debug: index:{global_index}, var mem start: 0x{self.zm.variables_addr:04X}, address: 0x{addr:04X}")
-            self.zm.memory[addr] = value >> 8
-            self.zm.memory[addr+1] = value &0xff
+            #self.zm.memory[addr] = value >> 8
+            #self.zm.memory[addr+1] = value &0xff
+            self.zm.write_word(addr, value)
             print(f"write global var {global_index} to 0x{addr:04x}: {value}")
 
     def execute_instruction(self):
@@ -599,7 +602,8 @@ class ZProcessor:
             #self.zm.pc = self.zm.call_stack[-1].get('stack', []).pop() if self.zm.call_stack[-1].get('stack') else 0
             # get operand count
             f = self.zm.call_stack.pop()
-            print(">> stack size #:", len(self.zm.call_stack),"(pop)")
+            print(f"debug: pop frame {len(self.zm.call_stack)}:")
+            self.print_frame(f)
             if len(self.zm.call_stack) == 0:
                 self.zm.print_error("call stack is empty")
                 self.zm.game_running = False
@@ -607,11 +611,13 @@ class ZProcessor:
 
             # restore pc
             newpc = f.return_pointer
-            print(f"debug: pointer from 0x{self.zm.pc:04X} to 0x{newpc:04X}")
             self.zm.pc = newpc + 1
+            print(f"debug: pointer from 0x{self.zm.pc:04X} to 0x{newpc:04X}")
 
             # Store return value if needed
-            self.write_variable(newpc, value)
+            #result_var = self.zm.read_byte(self.zm.pc)
+            #self.zm.pc += 1
+            #self.write_variable(result_var,newpc)
         else:
             self.zm.game_running = False
         print("debug: return from return_from_routine()")
@@ -877,6 +883,7 @@ class ZProcessor:
                     print(f"debug: local var {i-1} is {f.local_vars[i-1]}")
                     i += 1
             f.return_pointer = self.zm.pc
+            print(f"debug: new frame {len(self.zm.call_stack)}:")
             self.print_frame(f)
             self.zm.call_stack.append(f)
             print(">> stack size #", len(self.zm.call_stack),"(append)")
