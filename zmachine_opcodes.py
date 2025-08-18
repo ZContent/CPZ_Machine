@@ -271,10 +271,9 @@ class ZProcessor:
         else:
             # Global variable
             global_index = var_num - 16
-            print(f"read global var {global_index}: {self.zm.global_vars[global_index]}")
-            if global_index < len(self.zm.global_vars):
-                return self.zm.global_vars[global_index]
-            return 0
+            value = self.zm.memory[self.zm.variables_addr + global_index*2] << 8 | self.zm.memory[self.zm.variables_addr + global_index*2+1]
+            print(f"read global var {global_index}: {value}")
+            return value
 
     def write_variable(self, var_num, value):
         """Write value to variable"""
@@ -298,13 +297,13 @@ class ZProcessor:
             f = self.zm.call_stack[-1]
             if hasattr(f,"local_vars"):
                 f.local_vars[var_num -1 ] = value
-                print(f"debug: write local var {var_num - 1}: {value}",f.local_vars);
+                print(f"debug: write local var {var_num - 1}: {value}",f.local_vars)
         else:
             # Global variable
             global_index = var_num - 16
-            print(f"write global var {global_index}: {value}")
-            if global_index < len(self.zm.global_vars):
-                self.zm.global_vars[global_index] = value
+            addr = self.zm.memory[self.zm.variables_addr + global_index*2]
+            self.zm.memory[addr] = value >> 8
+            self.zm.memory[addr+1] = value &0xff
 
     def execute_instruction(self):
         """Execute one Z-machine instruction"""
@@ -537,13 +536,13 @@ class ZProcessor:
     def op_add(self, operands):
         """Add two values"""
         if len(operands) >= 2:
-            result = (operands[0] + operands[1]) #& 0xFFFF
+            result = (operands[0] + operands[1]) % 0x10000
             self.store_result(result)
 
     def op_sub(self, operands):
         """Subtract two values"""
         if len(operands) >= 2:
-            result = (operands[0] - operands[1]) #& 0xFFFF
+            result = (operands[0] - operands[1]) % 0x10000
             self.store_result(result)
 
     def op_print_char(self, operands):
@@ -798,7 +797,7 @@ class ZProcessor:
     def op_mul(self, operands):
         """multiply 2 numbers"""
         if len(operands) >= 2:
-            result = (operands[0] * operands[1]) & 0xFFFF
+            result = (operands[0] * operands[1]) % 0x10000
             self.store_result(result)
 
     def op_div(self, operands):
@@ -828,9 +827,11 @@ class ZProcessor:
         if operands[0] == 0:
             self.store_result(0)
         else:
-            for i in range(1,len(operands)):
-                if operands[i] > 0 and operands[i] & 0x8000:
-                    operands[i] = operands[i] - 0x10000 # make negative
+            #"All operands are assumed to be unsigned numbers, unless stated otherwise",
+            # so commenting this out for now
+            #for i in range(1,len(operands)):
+            #    if operands[i] > 0 and operands[i] & 0x8000:
+            #        operands[i] = operands[i] - 0x10000 # make negative
             f = Frame
             f.return_pointer = self.zm.pc
             if len(self.zm.call_stack) >= self.zm.STACK_SIZE:

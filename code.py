@@ -107,7 +107,7 @@ class ZMachine:
         self.pc = 0  # Program counter
         self.call_stack = []
         self.sp = self.STACK_SIZE - 2
-        self.global_vars = [0] * 240  # Z-machine global variables
+        #self.global_vars = [0] * 240  # Z-machine global variables
         self.objects = {}
         self.dictionary = {}
         self.current_theme = 'default'
@@ -435,7 +435,7 @@ class ZMachine:
                 'memory': bytes(self.memory[:self.variables_addr + 480]),  # Dynamic memory only
                 'pc': self.pc,
                 'call_stack': self.call_stack,
-                'global_vars': self.global_vars,
+                #'global_vars': self.global_vars,
                 'z_version': self.z_version
             }
 
