@@ -163,6 +163,7 @@ class ZProcessor:
             #print("debug: 1opcode byte = ",opcode)
             operand_type = (opcode_byte & 0x30) >> 4
             if operand_type == 3:
+                opcode = opcode_byte & 0x3F # need to check why this is needed
                 operand_count = 0
                 operand_types = []
             else:
@@ -282,7 +283,7 @@ class ZProcessor:
         print("debug: read_variable()",var_num)
         if var_num == 0:
             # Stack variable
-            print("debug: read stack variable")
+            #print("debug: read stack variable")
             if self.zm.call_stack:
                 f = self.zm.call_stack[-1]
                 self.print_frame(f,len(self.zm.call_stack))
@@ -294,10 +295,10 @@ class ZProcessor:
             return 0
         elif var_num <= 15:
             # Local variable
-            print("debug: read local var")
+            #print("debug: read local var")
             f = self.zm.call_stack[-1]
             if hasattr(f,"local_vars"):
-                print(f"debug: read local var {var_num - 1}: ",f.local_vars[var_num - 1],f.local_vars)
+                #print(f"debug: read local var {var_num - 1}: ",f.local_vars[var_num - 1],f.local_vars)
                 return f.local_vars[var_num - 1]
 
             return 0
@@ -305,10 +306,10 @@ class ZProcessor:
             # Global variable
             global_index = var_num - 16
             addr = self.zm.variables_addr+global_index*2
-            print(f"debug: index:{global_index}, var mem start: 0x{self.zm.variables_addr:04X}, address: 0x{addr:04X}")
+            #print(f"debug: index:{global_index}, var mem start: 0x{self.zm.variables_addr:04X}, address: 0x{addr:04X}")
             #value = self.zm.memory[addr] << 8 | self.zm.memory[addr+1]
             value = self.zm.read_word(addr)
-            print(f"read global var {global_index} from 0x{addr:04x}: {value}")
+            #print(f"read global var {global_index} from 0x{addr:04x}: {value}")
             return value
 
     def write_variable(self, var_num, value):
@@ -318,13 +319,11 @@ class ZProcessor:
 
         if var_num == 0:
             # Stack variable
-            print("debug: write stack variable")
+            #print("debug: write stack variable")
             if len(self.zm.call_stack) > 0:
                 #if 'stack' not in self.zm.call_stack[-1]:
-                print("debug: testing 1")
                 f = self.zm.call_stack[-1]
                 if hasattr( f,"stack"):
-                    print("debug: testing 2")
                     f.stack.append(value)
         elif var_num <= 15:
             # Local variable
@@ -333,16 +332,14 @@ class ZProcessor:
             f = self.zm.call_stack[-1]
             if hasattr(f,"local_vars"):
                 f.local_vars[var_num -1 ] = value
-                print(f"debug: write local var {var_num - 1}: {value}",f.local_vars)
+                #print(f"debug: write local var {var_num - 1}: {value}",f.local_vars)
         else:
             # Global variable
             global_index = var_num - 16
             addr = self.zm.variables_addr + global_index*2
-            print(f"debug: index:{global_index}, var mem start: 0x{self.zm.variables_addr:04X}, address: 0x{addr:04X}")
-            #self.zm.memory[addr] = value >> 8
-            #self.zm.memory[addr+1] = value &0xff
+            #print(f"debug: index:{global_index}, var mem start: 0x{self.zm.variables_addr:04X}, address: 0x{addr:04X}")
             self.zm.write_word(addr, value)
-            print(f"write global var {global_index} to 0x{addr:04x}: {value}")
+            #print(f"write global var {global_index} to 0x{addr:04x}: {value}")
 
     def execute_instruction(self):
         """Execute one Z-machine instruction"""
@@ -664,6 +661,7 @@ class ZProcessor:
         text = ""
         while addr < len(self.zm.memory):
             word = self.zm.read_word(addr)
+            print(f"debug: read word 0x{word:02X} at address 0x{addr:04X}")
             addr += 2
 
             # Extract 5-bit characters
@@ -918,8 +916,6 @@ class ZProcessor:
                     if argc > 0:
                         value = operands[i]
                         print(f"debug: operand[{i}] is {value}")
-                        #if value & 0x8000 != 0:
-                        #    value = value - 0x10000 # make negative
                         f.local_vars[i-1] = value
                     else:
                         f.local_vars[i-1] = arg
