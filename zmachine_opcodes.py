@@ -74,11 +74,6 @@ class ZProcessor:
     def __init__(self, zmachine):
         self.zm = zmachine
         self.instruction_count = 0
-        f = Frame
-        f.return_pointer = self.zm.read_word(0x06)  # Initial PC
-        self.zm.call_stack.append(f)
-        print(f"debug: new frame {len(self.zm.call_stack)}:")
-        self.print_frame(f)
         # Opcode dispatch table (simplified set for basic functionality)
         self.opcodes = {
             # 0OP opcodes
@@ -230,8 +225,8 @@ class ZProcessor:
 
         return types
 
-    def print_frame(self, frame):
-        print("## stack frame ##")
+    def print_frame(self, frame, i = "0"):
+        print(f"## frame {i}##")
         if hasattr(frame,"return_pointer"):
             print(f"return_pointer: 0x{frame.return_pointer:02X}")
         if hasattr(frame,"result_var"):
@@ -246,6 +241,12 @@ class ZProcessor:
             print("frame stack:",frame.stack)
         print("## end ##")
 
+    def print_frame_stack(self):
+            print("### frame stack ###")
+            for i in range(len(self.zm.call_stack)):
+                self.print_frame(self.zm.call_stack[i],i)
+            print("### end ###")
+
     def read_variable(self, var_num):
         """Read value from variable"""
         print("debug: read_variable()",var_num)
@@ -254,7 +255,7 @@ class ZProcessor:
             print("debug: read stack variable")
             if self.zm.call_stack:
                 f = self.zm.call_stack[-1]
-                self.print_frame(f)
+                self.print_frame(f,len(self.zm.call_stack))
                 if(len(f.stack) > 0):
                     return f.stack[-1]
                     #return self.zm.call_stack[-1].get('stack', []).pop() if self.zm.call_stack[-1].get('stack') else 0
@@ -315,11 +316,20 @@ class ZProcessor:
 
     def execute_instruction(self):
         """Execute one Z-machine instruction"""
+
         try:
             opcode, operands, form, pccount, opcode_byte = self.fetch_instruction()
+            if self.instruction_count == 0: # create initial frame the first time
+                f = Frame()
+                f.return_pointer = self.zm.read_word(0x06)  # Initial PC
+                print("debug: ptr: ", f.return_pointer)
+                print(f"debug 2: 0x{self.zm.memory[0x06]:02x}")
+                self.zm.call_stack.append(f)
+                print(f"debug: initial frame {len(self.zm.call_stack)}:")
+                self.print_frame(f,0)
             self.instruction_count += 1
-            if self.instruction_count > 100:
-                print("debug: 100 instruction limit reached")
+            if self.instruction_count > 200:
+                print("debug: 200 instruction limit reached")
                 sys.exit()
 
             # Map opcode based on form
@@ -601,18 +611,20 @@ class ZProcessor:
         if self.zm.call_stack:
             #self.zm.pc = self.zm.call_stack[-1].get('stack', []).pop() if self.zm.call_stack[-1].get('stack') else 0
             # get operand count
-            f = self.zm.call_stack.pop()
             print(f"debug: pop frame {len(self.zm.call_stack)}:")
-            self.print_frame(f)
+            #self.print_frame_stack()
+            #self.zm.call_stack.pop()
+            f = self.zm.call_stack.pop()
+            #self.print_frame(f,len(self.zm.call_stack))
             if len(self.zm.call_stack) == 0:
                 self.zm.print_error("call stack is empty")
                 self.zm.game_running = False
                 return
 
             # restore pc
-            newpc = self.zm.call_stack[-1].return_pointer
-            self.zm.pc = newpc + 1
+            newpc = f.return_pointer
             print(f"debug: pointer from 0x{self.zm.pc:04X} to 0x{newpc:04X}")
+            self.zm.pc = newpc
         else:
             self.zm.game_running = False
         print("debug: return from return_from_routine()")
@@ -841,8 +853,8 @@ class ZProcessor:
             #for i in range(1,len(operands)):
             #    if operands[i] > 0 and operands[i] & 0x8000:
             #        operands[i] = operands[i] - 0x10000 # make negative
-            f = Frame
-            f.return_pointer = self.zm.pc
+            f = Frame()
+            f.return_pointer = self.zm.pc + 1
             if len(self.zm.call_stack) >= self.zm.STACK_SIZE:
                 print("error: stack is out of memory")
                 sys.exit()
@@ -877,10 +889,14 @@ class ZProcessor:
                     argc -= 1
                     print(f"debug: local var {i-1} is {f.local_vars[i-1]}")
                     i += 1
-            f.return_pointer = self.zm.pc
-            print(f"debug: new frame {len(self.zm.call_stack)}:")
-            self.print_frame(f)
             self.zm.call_stack.append(f)
+            print(f"debug: new frame {len(self.zm.call_stack)}:")
+            #print("*** frame stack ****")
+            #self.print_frame_stack()
+            #for i in range(len(self.zm.call_stack)):
+            #    print(f"** frame {i}")
+            #    self.print_frame(self.zm.call_stack[i])
+            #self.print_frame(f)
             print(">> stack size #", len(self.zm.call_stack),"(append)")
 
     #def op_storew(self, operands): pass
