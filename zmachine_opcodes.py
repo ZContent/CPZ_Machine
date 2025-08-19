@@ -770,10 +770,18 @@ class ZProcessor:
             result = operands[0] & operands[1]
         self.store_result(result)
 
+    def get_object_address(self, obj):
+        offset = self.zm.object_table_addr + (max_properties - 1) * 2 + (obj - 1) * object_size
+        return offset
+
     #def op_test_attr(self, operands): pass
     def op_test_attr(self, operands):
-        print("op_test_attr() not yet supported")
-        sys.exit()
+        """ Test if an attribute bit is set."""
+        obj = operands[0]
+        bit = operands[1]
+        objp = self.get_object_address(obj) + (bit>>3)
+        value = self.zm.read_byte(objp)
+        self.branch(( value >> ( 7 - ( bit & 7 ) ) ) & 1)
 
     #def op_set_attr(self, operands): pass
     def op_set_attr(self, operands):
@@ -891,12 +899,7 @@ class ZProcessor:
                     i += 1
             self.zm.call_stack.append(f)
             print(f"debug: new frame {len(self.zm.call_stack)}:")
-            #print("*** frame stack ****")
-            #self.print_frame_stack()
-            #for i in range(len(self.zm.call_stack)):
-            #    print(f"** frame {i}")
-            #    self.print_frame(self.zm.call_stack[i])
-            #self.print_frame(f)
+            self.print_frame(f,"test")
             print(">> stack size #", len(self.zm.call_stack),"(append)")
 
     #def op_storew(self, operands): pass
