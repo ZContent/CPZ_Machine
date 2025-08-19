@@ -29,6 +29,12 @@ ASYNC = 0x2000
 PAGE_SIZE = 0x200
 PAGE_MASK = 0x1FF
 
+v3_lookup_table[3] = [
+   "abcdefghijklmnopqrstuvwxyz",
+   "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+   " \n0123456789.,!?_#'\"/\\-:()"
+]
+
 h_type = 3
 
 if h_type < 4:
@@ -657,20 +663,49 @@ class ZProcessor:
         print("debug: return from return_from_routine()")
 
     def decode_string(self, addr):
-        """Decode Z-machine string (simplified)"""
+        """Decode Z-machine string"""
         text = ""
+        shift_state = 0
+        shift_lock = 0
+        zscii_flag = 0
+        synonym_flag = 0
         while addr < len(self.zm.memory):
             word = self.zm.read_word(addr)
             print(f"debug: read word 0x{word:02X} at address 0x{addr:04X}")
             addr += 2
+            zscii_flag = 0
 
             # Extract 5-bit characters
             for shift in [10, 5, 0]:
                 char_code = (word >> shift) & 0x1F
-                if char_code == 0:
-                    text += " "
-                elif 1 <= char_code <= 26:
-                    text += chr(ord('a') + char_code - 1)
+                #if char_code == 0:
+                #    text += " "
+                #elif 1 <= char_code <= 26:
+                #    text += chr(ord('a') + char_code - 1)
+                if synonym_flag:
+                    self.zm.print_error("synonyms not yet supported")
+                    sys.exit()
+                elif zscii_flag:
+                    self.zm.print_error("zscii_flag not yet supported")
+                    sys.exit()
+                elif char_code > 5:
+                    char_code -= 6
+                    if shift_state == 2 and code == 0:
+                        zscii_flag = 1
+                    elif shift_state == 2 and code == 1:
+                        print_line()
+                    else
+                        text+= v3_lookup_table[shift_state][char_code]
+                    shift_state = shift_lock
+                else:
+                    if char_code == 0:
+                        text += " "
+                        if code < 4:
+                            synonym_flag = 1
+                            synonym = code
+                        else:
+                            shift_state = code - 3
+                            shift_lock = 0
 
             if word & 0x8000:  # End bit set
                 break
