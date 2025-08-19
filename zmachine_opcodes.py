@@ -77,14 +77,14 @@ class ZProcessor:
         # Opcode dispatch table (simplified set for basic functionality)
         self.opcodes = {
             # 0OP opcodes
-            0xB0: [self.op_rtrue,"op_rtrue"],      # rtrue
-            0xB1: [self.op_rfalse,"op_rfalse"],     # rfalse
-            0xB2: [self.op_print,"op_print"],      # print
-            0xB3: [self.op_print_ret,"op_print_ret"],  # print_ret
-            0xB8: [self.op_ret_popped,"op_ret_popped"], # ret_popped
-            0xB9: [self.op_catch,"op_catch"],      # catch
-            0xBA: [self.op_quit,"op_quit"],       # quit
-            0xBB: [self.op_new_line,"op_new_line"],   # new_line
+            0x30: [self.op_rtrue,"op_rtrue"],      # rtrue
+            0x31: [self.op_rfalse,"op_rfalse"],     # rfalse
+            0x32: [self.op_print,"op_print"],      # print
+            0x33: [self.op_print_ret,"op_print_ret"],  # print_ret
+            0x38: [self.op_ret_popped,"op_ret_popped"], # ret_popped
+            0x39: [self.op_catch,"op_catch"],      # catch
+            0x3A: [self.op_quit,"op_quit"],       # quit
+            0x3B: [self.op_new_line,"op_new_line"],   # new_line
 
             # 1OP opcodes
             0x80: [self.op_jz,"op_jz"],         # jz
@@ -367,7 +367,7 @@ class ZProcessor:
                 full_opcode = opcode  # 2OP opcodes
             elif form == SHORT_FORM:
                 if len(operands) == 0:
-                    full_opcode = opcode_byte  # 0OP opcodes
+                    full_opcode = opcode  # 0OP opcodes
                 else:
                     full_opcode = 0x80 | opcode  # 1OP opcodes
             else:  # VARIABLE_FORM
