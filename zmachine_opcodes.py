@@ -149,6 +149,36 @@ class ZProcessor:
         opcode_byte = self.zm.read_byte(self.zm.pc)
         self.zm.pc += 1
 
+        if opcode_byte >= 0xC0:
+            # Variable form: VAR
+            form = VARIABLE_FORM
+            opcode = opcode_byte & 0x1F
+            #print("debug: varopcode byte = ",opcode)
+            operand_types = self.decode_operand_types()
+            operand_count = len([t for t in operand_types if t != OMITTED])
+        elif opcode_byte >= 0x80:
+            # Short form: 1OP or 0OP
+            form = SHORT_FORM
+            opcode = opcode_byte & 0x0F
+            #print("debug: 1opcode byte = ",opcode)
+            operand_type = (opcode_byte & 0x30) >> 4
+            if operand_type == 3:
+                operand_count = 0
+                operand_types = []
+            else:
+                operand_count = 1
+                operand_types = [operand_type]
+        else:
+            # Long form: 2OP
+            form = LONG_FORM
+            opcode = opcode_byte & 0x1F
+            #print("debug: 2opcode byte = ",opcode)
+            operand_count = 2
+            operand_types = [
+                SMALL_CONSTANT if (opcode_byte & 0x40) == 0 else VARIABLE,
+                SMALL_CONSTANT if (opcode_byte & 0x20) == 0 else VARIABLE
+            ]
+        """
         # Determine instruction form
         if opcode_byte < 0x80:
             # Long form: 2OP
@@ -187,7 +217,7 @@ class ZProcessor:
             operand_types = self.decode_operand_types()
             operand_count = len([t for t in operand_types if t != OMITTED])
             print("debug: operand_count:",operand_count, "operand_types:",operand_types)
-
+        """
         # Fetch operands
         operands = []
         for op_type in operand_types:
