@@ -367,7 +367,7 @@ class ZProcessor:
                 full_opcode = opcode  # 2OP opcodes
             elif form == SHORT_FORM:
                 if len(operands) == 0:
-                    full_opcode = opcode  # 0OP opcodes
+                    full_opcode = opcode_byte  # 0OP opcodes
                 else:
                     full_opcode = 0x80 | opcode  # 1OP opcodes
             else:  # VARIABLE_FORM
