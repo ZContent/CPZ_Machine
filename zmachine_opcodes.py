@@ -183,7 +183,7 @@ class ZProcessor:
             # Variable form: VAR
             form = VARIABLE_FORM
             opcode = opcode_byte & 0x3F
-            #print("debug: varopcode byte = ",opcode)
+            print("debug: varopcode byte = ",opcode)
             operand_types = self.decode_operand_types()
             operand_count = len([t for t in operand_types if t != OMITTED])
             print("debug: operand_count:",operand_count, "operand_types:",operand_types)
@@ -350,7 +350,7 @@ class ZProcessor:
                 self.opcodes[full_opcode][0](operands)
                 print(f"**end",self.opcodes[full_opcode][1],f"pc:0x{(self.zm.pc):04X}")
             else:
-                print(f"Unimplemented opcode:0x{opcode:02X}/0x{full_opcode:02X} pc:0x{self.zm.pc:04X}")
+                print(f"Unimplemented opcode:0x{opcode:02X}/0x{full_opcode:02X} pc:0x{(self.zm.pc-pccount):04X}")
                 sys.exit()
 
         except Exception as e:
@@ -851,7 +851,6 @@ class ZProcessor:
                 result = (operands[0] % operands[1]) & 0xFFFF
             self.store_result(result)
 
-    #def op_call(self, operands): pass
     def op_call(self, operands):
         if operands[0] == 0:
             self.store_result(0)
