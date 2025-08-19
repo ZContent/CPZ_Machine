@@ -528,8 +528,8 @@ class ZProcessor:
     def op_ret_popped(self, operands):
         """Return popped value from stack"""
         if self.zm.call_stack and 'stack' in self.zm.call_stack[-1]:
-            f = self.zm.call_stack[-1]['stack'].pop()
-            value = f.variable
+            variable = self.zm.call_stack[-1]['stack'].pop()
+            value = variable
         else:
             value = 0
         self.return_from_routine(value)
