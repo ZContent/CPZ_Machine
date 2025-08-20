@@ -156,19 +156,22 @@ class ZProcessor:
 
         opcode_byte = self.zm.read_byte(self.zm.pc)
         self.zm.pc += 1
+        debug_count = 138
 
+        # new method
+        # Determine instruction form
         if opcode_byte >= 0xC0:
             # Variable form: VAR
             form = VARIABLE_FORM
             opcode = opcode_byte & 0x1F
-            #print("debug: varopcode byte = ",opcode)
+            #if self.instruction_count >= debug_count: print("debug: varopcode byte = ",opcode)
             operand_types = self.decode_operand_types()
             operand_count = len([t for t in operand_types if t != OMITTED])
         elif opcode_byte >= 0x80:
             # Short form: 1OP or 0OP
             form = SHORT_FORM
             opcode = opcode_byte & 0x0F
-            #print("debug: 1opcode byte = ",opcode)
+            #if self.instruction_count >= debug_count: print("debug: 1opcode byte = ",opcode)
             operand_type = (opcode_byte & 0x30) >> 4
             if operand_type == 3:
                 opcode = opcode_byte & 0x3F # need to check why this is needed
@@ -181,13 +184,14 @@ class ZProcessor:
             # Long form: 2OP
             form = LONG_FORM
             opcode = opcode_byte & 0x1F
-            #print("debug: 2opcode byte = ",opcode)
+            #if self.instruction_count >= debug_count: print("debug: 2opcode byte = ",opcode)
             operand_count = 2
             operand_types = [
                 SMALL_CONSTANT if (opcode_byte & 0x40) == 0 else VARIABLE,
                 SMALL_CONSTANT if (opcode_byte & 0x20) == 0 else VARIABLE
             ]
         """
+        #old method
         # Determine instruction form
         if opcode_byte < 0x80:
             # Long form: 2OP
@@ -229,22 +233,23 @@ class ZProcessor:
         """
         # Fetch operands
         operands = []
+
         for op_type in operand_types:
             if op_type == OMITTED:
                 break
             elif op_type == LARGE_CONSTANT:
                 value = self.zm.read_word(self.zm.pc)
-                #print(f"debug fetch instruction: read large constant: pc=0x{self.zm.pc:02X}, value={value}");
+                #if self.instruction_count >= debug_count: print(f"debug fetch instruction: read large constant: pc=0x{self.zm.pc:02X}, value={value}")
                 self.zm.pc += 2
                 operands.append(value)
             elif op_type == SMALL_CONSTANT:
                 value = self.zm.read_byte(self.zm.pc)
-                #print(f"debug fetch instruction: read small constant: pc=0x{self.zm.pc:02X}, value={value}");
+                #if self.instruction_count >= debug_count: print(f"debug fetch instruction: read small constant: pc=0x{self.zm.pc:02X}, value={value}")
                 self.zm.pc += 1
                 operands.append(value)
             elif op_type == VARIABLE:
                 var_num = self.zm.read_byte(self.zm.pc)
-                #print(f"debug fetch instruction: read variable: pc=0x{self.zm.pc:02X}, var_num={var_num}");
+                #if self.instruction_count >= debug_count: print(f"debug fetch instruction: read variable: pc=0x{self.zm.pc:02X}, var_num={var_num}")
                 self.zm.pc += 1
                 operands.append(self.read_variable(var_num))
         pccount = self.zm.pc - pccount
@@ -699,7 +704,7 @@ class ZProcessor:
                     if shift_state == 2 and char_code == 0:
                         zscii_flag = 1
                     elif shift_state == 2 and char_code == 1:
-                        self.zm.print_text("\r\n")
+                        text += "\r\n"
                     else:
                         text+= v3_lookup_table[shift_state][char_code]
                     shift_state = shift_lock
@@ -1031,7 +1036,8 @@ class ZProcessor:
 
     #def op_pull(self, operands): pass
     def op_pull(self, operands):
-        print("op_pull()",operands)
         print("debug: stack size:",len(self.zm.call_stack[-1].stack))
-        print("op_pull() not yet supported")
-        sys.exit()
+        value = self.zm.call_stack[-1].stack.pop()
+        print("debug: value:",value)
+        self.write_variable(operands[1],value)
+
