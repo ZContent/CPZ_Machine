@@ -29,7 +29,9 @@ ASYNC = 0x2000
 PAGE_SIZE = 0x200
 PAGE_MASK = 0x1FF
 
-v3_lookup_table[3] = [
+SYNONYMS_OFFSET = 0x24
+
+v3_lookup_table = [
    "abcdefghijklmnopqrstuvwxyz",
    "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
    " \n0123456789.,!?_#'\"/\\-:()"
@@ -292,7 +294,7 @@ class ZProcessor:
             #print("debug: read stack variable")
             if self.zm.call_stack:
                 f = self.zm.call_stack[-1]
-                self.print_frame(f,len(self.zm.call_stack))
+                #self.print_frame(f,len(self.zm.call_stack))
                 if(len(f.stack) > 0):
                     return f.stack[-1]
                     #return self.zm.call_stack[-1].get('stack', []).pop() if self.zm.call_stack[-1].get('stack') else 0
@@ -516,6 +518,7 @@ class ZProcessor:
         """Print literal string"""
         text = self.decode_string(self.zm.pc)
         self.zm.print_text(text)
+        #print("debug: string:",text)
         # Skip over the string
         self.zm.pc = self.skip_string(self.zm.pc)
 
@@ -540,7 +543,7 @@ class ZProcessor:
 
     def op_new_line(self, operands):
         """Print newline"""
-        self.zm.print_text("\n")
+        self.zm.print_text("\r\n")
 
     def op_jz(self, operands):
         """Jump if zero"""
@@ -668,43 +671,47 @@ class ZProcessor:
         shift_state = 0
         shift_lock = 0
         zscii_flag = 0
+        zscii = 0
         synonym_flag = 0
+        synonym = 0
         while addr < len(self.zm.memory):
             word = self.zm.read_word(addr)
-            print(f"debug: read word 0x{word:02X} at address 0x{addr:04X}")
+            #print(f"debug: read word 0x{word:02X} at address 0x{addr:04X}")
             addr += 2
             zscii_flag = 0
 
             # Extract 5-bit characters
             for shift in [10, 5, 0]:
                 char_code = (word >> shift) & 0x1F
-                #if char_code == 0:
-                #    text += " "
-                #elif 1 <= char_code <= 26:
-                #    text += chr(ord('a') + char_code - 1)
                 if synonym_flag:
-                    self.zm.print_error("synonyms not yet supported")
-                    sys.exit()
+                    synonym_flag = 0
+                    synonym = ( synonym - 1 ) * 64
+                    saddr = self.zm.read_word( self.zm.synonyms_offset + synonym + ( char_code * 2 ) ) * 2
+                    syntext = self.decode_string( saddr )
+                    #print(f"debug: synonym at 0x{saddr:04x} is '{syntext}'")
+                    text += syntext
+                    shift_state = shift_lock
                 elif zscii_flag:
                     self.zm.print_error("zscii_flag not yet supported")
                     sys.exit()
                 elif char_code > 5:
                     char_code -= 6
-                    if shift_state == 2 and code == 0:
+                    if shift_state == 2 and char_code == 0:
                         zscii_flag = 1
-                    elif shift_state == 2 and code == 1:
-                        print_line()
-                    else
+                    elif shift_state == 2 and char_code == 1:
+                        self.zm.print_text("\r\n")
+                    else:
                         text+= v3_lookup_table[shift_state][char_code]
                     shift_state = shift_lock
                 else:
                     if char_code == 0:
                         text += " "
-                        if code < 4:
+                    else:
+                        if char_code < 4:
                             synonym_flag = 1
-                            synonym = code
+                            synonym = char_code
                         else:
-                            shift_state = code - 3
+                            shift_state = char_code - 3
                             shift_lock = 0
 
             if word & 0x8000:  # End bit set
@@ -1024,5 +1031,7 @@ class ZProcessor:
 
     #def op_pull(self, operands): pass
     def op_pull(self, operands):
+        print("op_pull()",operands)
+        print("debug: stack size:",len(self.zm.call_stack[-1].stack))
         print("op_pull() not yet supported")
         sys.exit()
