@@ -150,41 +150,44 @@ class ZProcessor:
 
     def fetch_instruction(self):
         """Fetch and decode the next instruction"""
+        debug_count = 133
         pccount = self.zm.pc
         if self.zm.pc >= len(self.zm.memory):
             raise RuntimeError("PC out of bounds")
 
         opcode_byte = self.zm.read_byte(self.zm.pc)
         self.zm.pc += 1
-        debug_count = 138
+        if self.instruction_count >= debug_count: print(f"debug: opcode_byte: 0x{opcode_byte:02x}")
 
         # new method
+        """
         # Determine instruction form
         if opcode_byte >= 0xC0:
             # Variable form: VAR
             form = VARIABLE_FORM
             opcode = opcode_byte & 0x1F
-            #if self.instruction_count >= debug_count: print("debug: varopcode byte = ",opcode)
+            if self.instruction_count >= debug_count: print(f"debug: opcode_byte/opcode = 0x{opcode_byte:02x}/0x{opcode:02x}")
             operand_types = self.decode_operand_types()
             operand_count = len([t for t in operand_types if t != OMITTED])
         elif opcode_byte >= 0x80:
             # Short form: 1OP or 0OP
             form = SHORT_FORM
             opcode = opcode_byte & 0x0F
-            #if self.instruction_count >= debug_count: print("debug: 1opcode byte = ",opcode)
             operand_type = (opcode_byte & 0x30) >> 4
             if operand_type == 3:
+                if self.instruction_count >= debug_count: print("debug: 0opcode")
                 opcode = opcode_byte & 0x3F # need to check why this is needed
                 operand_count = 0
                 operand_types = []
             else:
+                if self.instruction_count >= debug_count: print("debug: 1opcode operand_type = ",operand_type)
                 operand_count = 1
                 operand_types = [operand_type]
         else:
             # Long form: 2OP
             form = LONG_FORM
             opcode = opcode_byte & 0x1F
-            #if self.instruction_count >= debug_count: print("debug: 2opcode byte = ",opcode)
+            if self.instruction_count >= debug_count: print("debug: 2opcode byte = ",opcode)
             operand_count = 2
             operand_types = [
                 SMALL_CONSTANT if (opcode_byte & 0x40) == 0 else VARIABLE,
@@ -230,7 +233,7 @@ class ZProcessor:
             operand_types = self.decode_operand_types()
             operand_count = len([t for t in operand_types if t != OMITTED])
             print("debug: operand_count:",operand_count, "operand_types:",operand_types)
-        """
+        #"""
         # Fetch operands
         operands = []
 
@@ -239,17 +242,17 @@ class ZProcessor:
                 break
             elif op_type == LARGE_CONSTANT:
                 value = self.zm.read_word(self.zm.pc)
-                #if self.instruction_count >= debug_count: print(f"debug fetch instruction: read large constant: pc=0x{self.zm.pc:02X}, value={value}")
+                if self.instruction_count >= debug_count: print(f"debug fetch instruction: read large constant: pc=0x{self.zm.pc:02X}, value={value}")
                 self.zm.pc += 2
                 operands.append(value)
             elif op_type == SMALL_CONSTANT:
                 value = self.zm.read_byte(self.zm.pc)
-                #if self.instruction_count >= debug_count: print(f"debug fetch instruction: read small constant: pc=0x{self.zm.pc:02X}, value={value}")
+                if self.instruction_count >= debug_count: print(f"debug fetch instruction: read small constant: pc=0x{self.zm.pc:02X}, value={value}")
                 self.zm.pc += 1
                 operands.append(value)
             elif op_type == VARIABLE:
                 var_num = self.zm.read_byte(self.zm.pc)
-                #if self.instruction_count >= debug_count: print(f"debug fetch instruction: read variable: pc=0x{self.zm.pc:02X}, var_num={var_num}")
+                if self.instruction_count >= debug_count: print(f"debug fetch instruction: read variable: pc=0x{self.zm.pc:02X}, var_num={var_num}")
                 self.zm.pc += 1
                 operands.append(self.read_variable(var_num))
         pccount = self.zm.pc - pccount
@@ -296,12 +299,14 @@ class ZProcessor:
         print("debug: read_variable()",var_num)
         if var_num == 0:
             # Stack variable
-            #print("debug: read stack variable")
+            print("debug: read stack variable")
             if self.zm.call_stack:
                 f = self.zm.call_stack[-1]
                 #self.print_frame(f,len(self.zm.call_stack))
                 if(len(f.stack) > 0):
-                    return f.stack[-1]
+                    value = f.stack.pop()
+                    print("debug: stack value:",value)
+                    return value
                     #return self.zm.call_stack[-1].get('stack', []).pop() if self.zm.call_stack[-1].get('stack') else 0
                 else:
                     return 0
@@ -332,12 +337,13 @@ class ZProcessor:
 
         if var_num == 0:
             # Stack variable
-            #print("debug: write stack variable")
+            print("debug: write stack variable")
             if len(self.zm.call_stack) > 0:
                 #if 'stack' not in self.zm.call_stack[-1]:
                 f = self.zm.call_stack[-1]
-                if hasattr( f,"stack"):
-                    f.stack.append(value)
+                if hasattr( self.zm.call_stack[-1],"stack"):
+                    self.zm.call_stack[-1].stack.append(value)
+                print("debug: stack:",self.zm.call_stack[-1].stack)
         elif var_num <= 15:
             # Local variable
             if value > 0 and (value & 0x800) != 0:
@@ -345,14 +351,14 @@ class ZProcessor:
             f = self.zm.call_stack[-1]
             if hasattr(f,"local_vars"):
                 f.local_vars[var_num -1 ] = value
-                #print(f"debug: write local var {var_num - 1}: {value}",f.local_vars)
+                print(f"debug: write local var {var_num - 1}: {value}",f.local_vars)
         else:
             # Global variable
             global_index = var_num - 16
             addr = self.zm.variables_addr + global_index*2
-            #print(f"debug: index:{global_index}, var mem start: 0x{self.zm.variables_addr:04X}, address: 0x{addr:04X}")
+            print(f"debug: index:{global_index}, var mem start: 0x{self.zm.variables_addr:04X}, address: 0x{addr:04X}")
             self.zm.write_word(addr, value)
-            #print(f"write global var {global_index} to 0x{addr:04x}: {value}")
+            print(f"write global var {global_index} to 0x{addr:04x}: {value}")
 
     def execute_instruction(self):
         """Execute one Z-machine instruction"""
@@ -386,8 +392,13 @@ class ZProcessor:
             self.zm.opcode = full_opcode
             # Execute opcode
             if full_opcode in self.opcodes:
-                print(f"**start {self.instruction_count}:", self.opcodes[full_opcode][1],operands,f"pc:0x{(self.zm.pc-pccount):04X}",f"opcode:0x{opcode_byte:02X}/0x{opcode:02X}/0x{full_opcode:02X}")
-                self.opcodes[full_opcode][0](operands)
+                print(f"**start {self.instruction_count}:", self.opcodes[full_opcode][1],operands,f"pc:0x{(self.zm.pc-pccount):04x}",f"opcode:0x{opcode_byte:02X}/0x{opcode:02X}/0x{full_opcode:02X}")
+                if full_opcode == 0x32:
+                    self.opcodes[full_opcode][0](self.zm.pc-pccount + 1)
+                elif full_opcode == 0x3b:
+                    self.opcodes[full_opcode][0](self.zm.pc-pccount + 1)
+                else:
+                    self.opcodes[full_opcode][0](operands)
                 print(f"**end",self.opcodes[full_opcode][1],f"pc:0x{(self.zm.pc):04X}")
             else:
                 print(f"Unimplemented opcode:0x{opcode:02X}/0x{full_opcode:02X} pc:0x{(self.zm.pc-pccount):04X}")
@@ -519,9 +530,10 @@ class ZProcessor:
         """Return false from current routine"""
         self.return_from_routine(0)
 
-    def op_print(self, operands):
+    def op_print(self, pcptr):
         """Print literal string"""
-        text = self.decode_string(self.zm.pc)
+        #text = self.decode_string(self.zm.pc)
+        text = self.decode_string(pcptr)
         self.zm.print_text(text)
         #print("debug: string:",text)
         # Skip over the string
@@ -546,11 +558,13 @@ class ZProcessor:
         """Quit the game"""
         self.zm.game_running = False
 
-    def op_new_line(self, operands):
+    def op_new_line(self, pcptr):
         """Print newline"""
+        self.zm.pc = pcptr
         self.zm.print_text("\r\n")
 
     def op_jz(self, operands):
+        print("debug: opz_jz()", operands)
         """Jump if zero"""
         if operands:
             self.branch(operands[0] == 0)
@@ -672,6 +686,7 @@ class ZProcessor:
 
     def decode_string(self, addr):
         """Decode Z-machine string"""
+        #print(f"debug: decode_string(addr=0x{addr:04x})")
         text = ""
         shift_state = 0
         shift_lock = 0
@@ -706,6 +721,7 @@ class ZProcessor:
                     elif shift_state == 2 and char_code == 1:
                         text += "\r\n"
                     else:
+                        #print(f"0x{char_code:02x}=>'{v3_lookup_table[shift_state][char_code]}'")
                         text+= v3_lookup_table[shift_state][char_code]
                     shift_state = shift_lock
                 else:
@@ -839,7 +855,7 @@ class ZProcessor:
 
     #def op_and(self, operands): pass
     def op_and(self, operands):
-        print("op_or()",operands[0])
+        print("op_and()",operands)
         result = 0
         if len(operands) >= 2:
             result = operands[0] & operands[1]

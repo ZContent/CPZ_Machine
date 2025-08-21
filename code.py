@@ -132,6 +132,7 @@ class ZMachine:
         self.abbreviations_addr = 0
         self.routine_offset = 0
         self.string_offset = 0
+        self.synonyms_offset = 0
 
         # Initialize processor and keyboard handler
         self.processor = ZProcessor(self)
@@ -252,6 +253,7 @@ class ZMachine:
             self.object_table_addr = self.read_word(0x0A)
             self.variables_addr = self.read_word(0x0C)
             self.abbreviations_addr = self.read_word(0x18)
+            self.synonyms_offset = self.read_word(24);
 
             # Version-specific initialization
             if self.z_version >= 4:
