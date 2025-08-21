@@ -160,7 +160,7 @@ class ZProcessor:
         if self.instruction_count >= debug_count: print(f"debug: opcode_byte: 0x{opcode_byte:02x}")
 
         # new method
-        """
+        #"""
         # Determine instruction form
         if opcode_byte >= 0xC0:
             # Variable form: VAR
@@ -169,20 +169,20 @@ class ZProcessor:
             if self.instruction_count >= debug_count: print(f"debug: opcode_byte/opcode = 0x{opcode_byte:02x}/0x{opcode:02x}")
             operand_types = self.decode_operand_types()
             operand_count = len([t for t in operand_types if t != OMITTED])
+        elif opcode_byte >= 0xB0:
+            # short form: 0OP
+            form = SHORT_FORM
+            opcode = opcode_byte & 0x3F
+            operand_count = 0
+            operand_types = []
         elif opcode_byte >= 0x80:
-            # Short form: 1OP or 0OP
+            # Short form: 1OP
             form = SHORT_FORM
             opcode = opcode_byte & 0x0F
             operand_type = (opcode_byte & 0x30) >> 4
-            if operand_type == 3:
-                if self.instruction_count >= debug_count: print("debug: 0opcode")
-                opcode = opcode_byte & 0x3F # need to check why this is needed
-                operand_count = 0
-                operand_types = []
-            else:
-                if self.instruction_count >= debug_count: print("debug: 1opcode operand_type = ",operand_type)
-                operand_count = 1
-                operand_types = [operand_type]
+            if self.instruction_count >= debug_count: print("debug: 1opcode = ",opcode)
+            operand_count = 1
+            operand_types = [operand_type]
         else:
             # Long form: 2OP
             form = LONG_FORM
@@ -233,7 +233,7 @@ class ZProcessor:
             operand_types = self.decode_operand_types()
             operand_count = len([t for t in operand_types if t != OMITTED])
             print("debug: operand_count:",operand_count, "operand_types:",operand_types)
-        #"""
+        """
         # Fetch operands
         operands = []
 
@@ -393,12 +393,15 @@ class ZProcessor:
             # Execute opcode
             if full_opcode in self.opcodes:
                 print(f"**start {self.instruction_count}:", self.opcodes[full_opcode][1],operands,f"pc:0x{(self.zm.pc-pccount):04x}",f"opcode:0x{opcode_byte:02X}/0x{opcode:02X}/0x{full_opcode:02X}")
-                if full_opcode == 0x32:
-                    self.opcodes[full_opcode][0](self.zm.pc-pccount + 1)
-                elif full_opcode == 0x3b:
-                    self.opcodes[full_opcode][0](self.zm.pc-pccount + 1)
-                else:
-                    self.opcodes[full_opcode][0](operands)
+                #if full_opcode == 0x32:
+                #    self.opcodes[full_opcode][0](self.zm.pc-pccount + 1)
+                #elif full_opcode == 0x3b:
+                #    self.opcodes[full_opcode][0](self.zm.pc-pccount + 1)
+                #else:
+                #if len(operands) > 0:
+                self.opcodes[full_opcode][0](operands)
+                #else:
+                #    self.opcodes[full_opcode][0]()
                 print(f"**end",self.opcodes[full_opcode][1],f"pc:0x{(self.zm.pc):04X}")
             else:
                 print(f"Unimplemented opcode:0x{opcode:02X}/0x{full_opcode:02X} pc:0x{(self.zm.pc-pccount):04X}")
@@ -530,10 +533,9 @@ class ZProcessor:
         """Return false from current routine"""
         self.return_from_routine(0)
 
-    def op_print(self, pcptr):
+    def op_print(self,operands):
         """Print literal string"""
-        #text = self.decode_string(self.zm.pc)
-        text = self.decode_string(pcptr)
+        text = self.decode_string(self.zm.pc)
         self.zm.print_text(text)
         #print("debug: string:",text)
         # Skip over the string
@@ -558,9 +560,8 @@ class ZProcessor:
         """Quit the game"""
         self.zm.game_running = False
 
-    def op_new_line(self, pcptr):
+    def op_new_line(self, operands):
         """Print newline"""
-        self.zm.pc = pcptr
         self.zm.print_text("\r\n")
 
     def op_jz(self, operands):
