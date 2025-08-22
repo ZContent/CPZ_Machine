@@ -1119,21 +1119,21 @@ class ZProcessor:
 
     #def op_push(self, operands): pass
     def op_push(self, operands):
-        self.zm.call_stack[-1].stack.append(operands[0])
+        #value = self.read_variable(operands[0])
+        value = operands[0]
+        self.zm.call_stack[-1].stack.append(value)
         #print("op_push() not yet supported")
         #sys.exit()
 
     #def op_pull(self, operands): pass
     def op_pull(self, operands):
-        #print("debug: stack size:",len(self.zm.call_stack[-1].stack))
-        #if len(self.zm.call_stack[-1].stack) == 0:
-        #   self.zm.print_error("op_pull: stack is empty")
-        #   self.zm.game_running = False
-        #   return
-        #value = self.zm.call_stack[-1].stack.pop()
+        print("debug: stack size:",len(self.zm.call_stack[-1].stack))
+        #value = self.zm.read_byte(self.zm.sp)
+        #self.zm.pc += 1
         #print("debug: value:",value)
-        value = self.zm.read_byte(self.zm.sp)
-        self.zm.pc += 1
+        #self.write_variable(value,operands[0])
+
+        value = self.zm.call_stack[-1].stack.pop()
         print("debug: value:",value)
-        self.write_variable(value,operands[0])
+        self.write_variable(operands[0], value)
 
