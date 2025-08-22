@@ -160,7 +160,7 @@ class ZProcessor:
 
     def fetch_instruction(self):
         """Fetch and decode the next instruction"""
-        debug_count = 133
+        debug_count = 143
         pccount = self.zm.pc
         if self.zm.pc >= len(self.zm.memory):
             raise RuntimeError("PC out of bounds")
@@ -170,7 +170,7 @@ class ZProcessor:
         if self.instruction_count >= debug_count: print(f"debug: opcode_byte: 0x{opcode_byte:02x}")
 
         # new method
-        """
+        #"""
         # Determine instruction form
         if opcode_byte >= 0xC0:
             # Variable form: VAR
@@ -179,6 +179,7 @@ class ZProcessor:
             if self.instruction_count >= debug_count: print(f"debug: opcode_byte/opcode = 0x{opcode_byte:02x}/0x{opcode:02x}")
             operand_types = self.decode_operand_types()
             operand_count = len([t for t in operand_types if t != OMITTED])
+            if self.instruction_count >= debug_count: print(f"debug: operand count:{operand_count}, types:{operand_types}")
         elif opcode_byte >= 0xB0:
             # short form: 0OP
             form = SHORT_FORM
@@ -243,7 +244,7 @@ class ZProcessor:
             operand_types = self.decode_operand_types()
             operand_count = len([t for t in operand_types if t != OMITTED])
             print("debug: operand_count:",operand_count, "operand_types:",operand_types)
-        #"""
+        """
         # Fetch operands
         operands = []
 
@@ -264,6 +265,8 @@ class ZProcessor:
                 var_num = self.zm.read_byte(self.zm.pc)
                 if self.instruction_count >= debug_count: print(f"debug fetch instruction: read variable: pc=0x{self.zm.pc:02X}, var_num={var_num}")
                 self.zm.pc += 1
+                if var_num <= 15:
+                    self.print_frame(self.zm.call_stack[-1],"fetch_instruction")
                 operands.append(self.read_variable(var_num))
         pccount = self.zm.pc - pccount
         return opcode, operands, form, pccount, opcode_byte
@@ -403,12 +406,8 @@ class ZProcessor:
             # Execute opcode
             if full_opcode in self.opcodes:
                 print(f"**start {self.instruction_count}:", self.opcodes[full_opcode][1],operands,f"pc:0x{(self.zm.pc-pccount):04x}",f"opcode:0x{opcode_byte:02X}/0x{opcode:02X}/0x{full_opcode:02X}")
-                if full_opcode == 0x32:
-                    self.opcodes[full_opcode][0](self.zm.pc-pccount + 1)
-                elif full_opcode == 0x3b:
-                    self.opcodes[full_opcode][0](self.zm.pc-pccount + 1)
-                else:
-                    self.opcodes[full_opcode][0](operands)
+
+                self.opcodes[full_opcode][0](operands)
                 print(f"**end",self.opcodes[full_opcode][1],f"pc:0x{(self.zm.pc):04X}")
             else:
                 print(f"Unimplemented opcode:0x{opcode:02X}/0x{full_opcode:02X} pc:0x{(self.zm.pc-pccount):04X}")
@@ -466,20 +465,20 @@ class ZProcessor:
                 self.zm.pc += branch_offset - 2
         print(f"debug: return branch(), branch_offset = 0x{branch_offset:04X}, pc = 0x{self.zm.pc:04X}")
 
+    """ to be removed
     def get_byte(self, offset):
-        """get byte in memory array"""
         print("debug: get_byte()", offset)
         value = self.zm.memory[offset]
         print("debug: get_byte() returns",value)
         return value
 
     def get_word(self, offset):
-        """get word in memory array"""
         print("debug: get_word(): ",offset)
         value = self.zm.memory[offset] << 8
         value += self.zm.memory[offset + 1]
         print("debug: get_word() returns",value)
         return value
+    """
 
     def set_word(self, offset, value):
         """set word in memory array"""
@@ -555,8 +554,8 @@ class ZProcessor:
         """Calculate the address of the start of the property list associated with an object."""
         print("debug: get_property_addr() ",obj)
         object_addr = self.get_object_addr(obj)+ property_offset
-        prop_addr = self.get_word( object_addr)
-        size = self.get_byte( prop_addr )
+        prop_addr = self.zm.read_word( object_addr)
+        size = self.zm.read_byte( prop_addr )
         print("debug: object:",obj, "object_addr:",object_addr,"prop_addr:", prop_addr, "size:",size)
         value = prop_addr + ( size * 2 ) + 1
         print("debug get_property_addr() returns",value)
@@ -565,7 +564,7 @@ class ZProcessor:
     def get_next_prop(self, prop_addr):
         """Calculate the address of the next property in a property list."""
         print("debug: get_next_prop()", prop_addr)
-        value = self.get_byte( prop_addr )
+        value = self.zm.read_byte( prop_addr )
         prop_addr+=1
 
         """Calculate the length of this property"""
@@ -592,10 +591,9 @@ class ZProcessor:
         """Return false from current routine"""
         self.return_from_routine(0)
 
-    def op_print(self, pcptr):
+    def op_print(self,operands):
         """Print literal string"""
-        #text = self.decode_string(self.zm.pc)
-        text = self.decode_string(pcptr)
+        text = self.decode_string(self.zm.pc)
         self.zm.print_text(text)
         #print("debug: string:",text)
         # Skip over the string
@@ -620,16 +618,16 @@ class ZProcessor:
         """Quit the game"""
         self.zm.game_running = False
 
-    def op_new_line(self, pcptr):
+    def op_new_line(self, operands):
         """Print newline"""
-        self.zm.pc = pcptr
         self.zm.print_text("\r\n")
 
     def op_jz(self, operands):
         print("debug: opz_jz()", operands)
+        self.print_frame(self.zm.call_stack[-1],"op_jz")
         """Jump if zero"""
         if operands:
-            self.branch(operands[0] == 0)
+            self.branch(not operands[0] )
 
     def op_je(self, operands):
         """Jump if equal"""
@@ -885,8 +883,11 @@ class ZProcessor:
 
     #def op_dec_chk(self, operands): pass
     def op_dec_chk(self, operands):
+        result = self.read_variable(operands[0])
+        result -= 1
         result = operands[0] - 1
         self.store_result(result)
+        self.write_variable(operands[0],result)
         if len(operands) >= 2:
             # Convert to signed 16-bit
             a = result if result < 32768 else result - 65536
@@ -895,8 +896,11 @@ class ZProcessor:
 
     #def op_inc_chk(self, operands): pass
     def op_inc_chk(self, operands):
-        print("op_inc_chk() not yet supported")
-        sys.exit()
+        print("debug: op_inc_chk()", operands)
+        result = self.read_variable(operands[0])
+        result += 1
+        self.write_variable(operands[0],result)
+        self.branch(result > operands[1])
 
     #def op_jin(self, operands): pass
     def op_jin(self, operands):
@@ -985,6 +989,7 @@ class ZProcessor:
     #def op_loadb(self, operands): pass
     def op_loadb(self, operands):
         result = self.zm.read_byte(operands[0] + operands[1])
+        print(f"debug: reading loadb from 0x{operands[0]+operands[1]:04x}: 0x{result:02x}")
         self.store_result(result)
 
     #def op_get_prop(self, operands): pass
@@ -1080,13 +1085,14 @@ class ZProcessor:
 
     #def op_storew(self, operands): pass
     def op_storew(self, operands):
-        """Store a word in an array of words"""
-        self.set_word(operands[1],operands[2])
+        """Store a word"""
+        self.zm.write_byte(operands[0]+2*operands[1],operands[2])
+
 
     #def op_storeb(self, operands): pass
     def op_storeb(self, operands):
-        """Store a byte in an array of bytes"""
-        self.set_byte(operands[1],operands[2])
+        """Store a byte """
+        self.zm.write_byte(operands[0]+operands[1],operands[2])
 
     #def op_put_prop(self, operands): pass
     def op_put_prop(self, operands):
@@ -1099,7 +1105,7 @@ class ZProcessor:
         prop_addr = self.get_property_addr(obj)
         while True:
             print("debug")
-            value = self.get_byte( prop_addr)
+            value = self.zm.read_byte( prop_addr)
             print(value, property_mask, prop)
             if(value & property_mask ) <= prop:
                 break
@@ -1115,9 +1121,10 @@ class ZProcessor:
         prop_addr+=1
 
         if h_type <= 3 and not( value & 0xe0 ) or h_type >= 4 and not( value & 0xc0 ):
-            self.set_byte( prop_addr, setvalue )
+            self.zm.write_byte( prop_addr, setvalue )
         else:
-            self.set_word( prop_addr, setvalue )
+            self.zm.write_word( prop_addr, setvalue )
+
 
     #def op_random(self, operands): pass
     def op_random(self, operands):
@@ -1135,13 +1142,21 @@ class ZProcessor:
 
     #def op_push(self, operands): pass
     def op_push(self, operands):
-        print("op_push() not yet supported")
-        sys.exit()
+        self.zm.call_stack[-1].stack.append(operands[0])
+        #print("op_push() not yet supported")
+        #sys.exit()
 
     #def op_pull(self, operands): pass
     def op_pull(self, operands):
-        print("debug: stack size:",len(self.zm.call_stack[-1].stack))
-        value = self.zm.call_stack[-1].stack.pop()
+        #print("debug: stack size:",len(self.zm.call_stack[-1].stack))
+        #if len(self.zm.call_stack[-1].stack) == 0:
+        #   self.zm.print_error("op_pull: stack is empty")
+        #   self.zm.game_running = False
+        #   return
+        #value = self.zm.call_stack[-1].stack.pop()
+        #print("debug: value:",value)
+        value = self.zm.read_byte(self.zm.sp)
+        self.zm.pc += 1
         print("debug: value:",value)
-        self.write_variable(operands[1],value)
+        self.write_variable(value,operands[0])
 
