@@ -150,7 +150,7 @@ class ZProcessor:
 
     def fetch_instruction(self):
         """Fetch and decode the next instruction"""
-        debug_count = 133
+        debug_count = 143
         pccount = self.zm.pc
         if self.zm.pc >= len(self.zm.memory):
             raise RuntimeError("PC out of bounds")
@@ -169,6 +169,7 @@ class ZProcessor:
             if self.instruction_count >= debug_count: print(f"debug: opcode_byte/opcode = 0x{opcode_byte:02x}/0x{opcode:02x}")
             operand_types = self.decode_operand_types()
             operand_count = len([t for t in operand_types if t != OMITTED])
+            if self.instruction_count >= debug_count: print(f"debug: operand count:{operand_count}, types:{operand_types}")
         elif opcode_byte >= 0xB0:
             # short form: 0OP
             form = SHORT_FORM
@@ -254,6 +255,8 @@ class ZProcessor:
                 var_num = self.zm.read_byte(self.zm.pc)
                 if self.instruction_count >= debug_count: print(f"debug fetch instruction: read variable: pc=0x{self.zm.pc:02X}, var_num={var_num}")
                 self.zm.pc += 1
+                if var_num <= 15:
+                    self.print_frame(self.zm.call_stack[-1],"fetch_instruction")
                 operands.append(self.read_variable(var_num))
         pccount = self.zm.pc - pccount
         return opcode, operands, form, pccount, opcode_byte
@@ -818,8 +821,11 @@ class ZProcessor:
 
     #def op_dec_chk(self, operands): pass
     def op_dec_chk(self, operands):
+        result = self.read_variable(operands[0])
+        result -= 1
         result = operands[0] - 1
         self.store_result(result)
+        self.write_variable(operands[0],result)
         if len(operands) >= 2:
             # Convert to signed 16-bit
             a = result if result < 32768 else result - 65536
@@ -828,8 +834,11 @@ class ZProcessor:
 
     #def op_inc_chk(self, operands): pass
     def op_inc_chk(self, operands):
-        print("op_inc_chk() not yet supported")
-        sys.exit()
+        print("debug: op_inc_chk()", operands)
+        result = self.read_variable(operands[0])
+        result += 1
+        self.write_variable(operands[0],result)
+        self.branch(result > operands[1])
 
     #def op_jin(self, operands): pass
     def op_jin(self, operands):
@@ -1045,13 +1054,21 @@ class ZProcessor:
 
     #def op_push(self, operands): pass
     def op_push(self, operands):
-        print("op_push() not yet supported")
-        sys.exit()
+        self.zm.call_stack[-1].stack.append(operands[0])
+        #print("op_push() not yet supported")
+        #sys.exit()
 
     #def op_pull(self, operands): pass
     def op_pull(self, operands):
-        print("debug: stack size:",len(self.zm.call_stack[-1].stack))
-        value = self.zm.call_stack[-1].stack.pop()
+        #print("debug: stack size:",len(self.zm.call_stack[-1].stack))
+        #if len(self.zm.call_stack[-1].stack) == 0:
+        #   self.zm.print_error("op_pull: stack is empty")
+        #   self.zm.game_running = False
+        #   return
+        #value = self.zm.call_stack[-1].stack.pop()
+        #print("debug: value:",value)
+        value = self.zm.read_byte(self.zm.sp)
+        self.zm.pc += 1
         print("debug: value:",value)
-        self.write_variable(operands[1],value)
+        self.write_variable(value,operands[0])
 
