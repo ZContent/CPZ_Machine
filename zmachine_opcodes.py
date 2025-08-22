@@ -465,40 +465,18 @@ class ZProcessor:
                 self.zm.pc += branch_offset - 2
         print(f"debug: return branch(), branch_offset = 0x{branch_offset:04X}, pc = 0x{self.zm.pc:04X}")
 
-    """ to be removed
-    def get_byte(self, offset):
-        print("debug: get_byte()", offset)
-        value = self.zm.memory[offset]
-        print("debug: get_byte() returns",value)
-        return value
-
-    def get_word(self, offset):
-        print("debug: get_word(): ",offset)
-        value = self.zm.memory[offset] << 8
-        value += self.zm.memory[offset + 1]
-        print("debug: get_word() returns",value)
-        return value
-    """
-
-    def set_word(self, offset, value):
-        """set word in memory array"""
-        print("debug: set_word(): ",offset, value)
-        if (offset + 1) > len(self.zm.memory):
-            print("error: maximum memory reached")
-            exit(0)
-        self.zm.memory[offset] = (value >> 8) &0xff
-        self.zm.memory[offset+1] = value &0xff
-        print("debug: set_word() sets value",value," at offset",offset)
-
     def read_object(self, obj, field):
+        print("debug: read_object()",obj, field)
         if field == object_parent:
             self.zm.read_byte(obj + object_parent)
         elif field == object_next:
             self.zm.read_byte(obj + object_next)
         else:
             self.zm.read_byte(obj + object_child)
+        print("debug: read_object() done")
 
     def write_object(self, obj, field, value):
+        print("debug: write_obj()",obj, field, value)
         """
         #define PARENT3(offset) (offset + O3_PARENT)
         #define NEXT3(offset) (offset + O3_NEXT)
@@ -510,18 +488,22 @@ class ZProcessor:
             self.zm.write_byte(obj + object_next, value)
         else:
             self.zm.write_byte(obj + object_child, value)
+        print("debug: write_obj() done")
 
     def remove_object(self, obj):
-        objp = get_object_address( obj)
+        print("debug: remove_object()",obj)
+        objp = self.get_object_address( obj)
         # Get parent of object, and return if no parent
-        parent = self.read_object, objp, object_parent)
-        if parent == 0:
+        parent = self.read_object( objp, object_parent)
+        print("debug: parent:",parent)
+        if parent is None:
             return
+        print("debug: test 2")
         objp = self.get_object_address( parent)
-        objc = self.read_object, parent, object_child)
+        objc = self.read_object( parent, object_child)
         # If object is first child then just make the parent child pointer
-        # equal to the next child 
-        if objc == obj: 
+        # equal to the next child
+        if objc == obj:
             self.write_object( parent, object_child, read_object( objp, object_next ) )
         else:
             # Walk down the child chain looking for this object
@@ -531,29 +513,20 @@ class ZProcessor:
 
                 if objc == obj:
                     break
-
             # Set the next pointer thre previous child to the next pointer
             # of the current object child pointer */
 
             self.write_object( childp, object_next, read_object( objp, object_next ) )
-            
+
         # Set the parent and next child pointers to NULL
-        self.write_object( objp, object_parent, 0 )
-        self.write_object( objp, object_next, 0 )
-
-
-    def get_object_addr(self, obj):
-        """Calculate the address of an object in the data area."""
-        print("debug: get_object_addr()",obj)
-        offset = self.zm.object_table_addr + ( ( max_properties - 1 ) * 2 ) + ( ( obj - 1 ) * object_size)
-        print("debug: ",self.zm.object_table_addr, max_properties, obj, object_size)
-        print("debug: get_object_addr() returns",offset)
-        return offset
+        self.write_object( objp, object_parent, None )
+        self.write_object( objp, object_next, None )
+        print("debug: remove_object() done")
 
     def get_property_addr(self, obj):
         """Calculate the address of the start of the property list associated with an object."""
         print("debug: get_property_addr() ",obj)
-        object_addr = self.get_object_addr(obj)+ property_offset
+        object_addr = self.get_object_address(obj)+ property_offset
         prop_addr = self.zm.read_word( object_addr)
         size = self.zm.read_byte( prop_addr )
         print("debug: object:",obj, "object_addr:",object_addr,"prop_addr:", prop_addr, "size:",size)
@@ -955,30 +928,34 @@ class ZProcessor:
 
         obj1 = operands[0]
         obj2 = operands[1]
-        # Get addresses of both objects 
-        obj1p = self.get_object_addr(obj1)
-        obj2p = self.get_object_addr(obj2)
+        # Get addresses of both objects
+        obj1p = self.get_object_address(obj1)
+        obj2p = self.get_object_address(obj2)
 
         # Remove object 1 from current parent
 
-        self.remove_obj(obj1)
+        self.remove_object(obj1)
 
-        # Make object 2 object 1's parent 
-
+        # Make object 2 object 1's parent
+        print("debug: 2")
         self.write_object(obj1p, object_parent, obj2)
 
         # Get current first child of object 2
 
+        print("debug: 3")
         child2 = self.read_object(obj2p, object_child)
 
         # Make object 1 first child of object 2 *
 
+        print("debug: 4")
         self.write_object(obj2p, object_child, obj1)
 
-        # If object 2 had children then link them into the next child field of object 1 
+        # If object 2 had children then link them into the next child field of object 1
 
-        if child2 != 0:
+        print("debug: 5")
+        if child2 is not None:
             self.write_object(obj1p, object_next, child2)
+        print("debug: op_insert_obj() done")
 
 
     #def op_loadw(self, operands): pass
