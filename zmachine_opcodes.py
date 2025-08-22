@@ -393,15 +393,8 @@ class ZProcessor:
             # Execute opcode
             if full_opcode in self.opcodes:
                 print(f"**start {self.instruction_count}:", self.opcodes[full_opcode][1],operands,f"pc:0x{(self.zm.pc-pccount):04x}",f"opcode:0x{opcode_byte:02X}/0x{opcode:02X}/0x{full_opcode:02X}")
-                #if full_opcode == 0x32:
-                #    self.opcodes[full_opcode][0](self.zm.pc-pccount + 1)
-                #elif full_opcode == 0x3b:
-                #    self.opcodes[full_opcode][0](self.zm.pc-pccount + 1)
-                #else:
-                #if len(operands) > 0:
+
                 self.opcodes[full_opcode][0](operands)
-                #else:
-                #    self.opcodes[full_opcode][0]()
                 print(f"**end",self.opcodes[full_opcode][1],f"pc:0x{(self.zm.pc):04X}")
             else:
                 print(f"Unimplemented opcode:0x{opcode:02X}/0x{full_opcode:02X} pc:0x{(self.zm.pc-pccount):04X}")
@@ -459,20 +452,20 @@ class ZProcessor:
                 self.zm.pc += branch_offset - 2
         print(f"debug: return branch(), branch_offset = 0x{branch_offset:04X}, pc = 0x{self.zm.pc:04X}")
 
+    """ to be removed
     def get_byte(self, offset):
-        """get byte in memory array"""
         print("debug: get_byte()", offset)
         value = self.zm.memory[offset]
         print("debug: get_byte() returns",value)
         return value
 
     def get_word(self, offset):
-        """get word in memory array"""
         print("debug: get_word(): ",offset)
         value = self.zm.memory[offset] << 8
         value += self.zm.memory[offset + 1]
         print("debug: get_word() returns",value)
         return value
+    """
 
     def set_word(self, offset, value):
         """set word in memory array"""
@@ -496,8 +489,8 @@ class ZProcessor:
         """Calculate the address of the start of the property list associated with an object."""
         print("debug: get_property_addr() ",obj)
         object_addr = self.get_object_addr(obj)+ property_offset
-        prop_addr = self.get_word( object_addr)
-        size = self.get_byte( prop_addr )
+        prop_addr = self.zm.read_word( object_addr)
+        size = self.zm.read_byte( prop_addr )
         print("debug: object:",obj, "object_addr:",object_addr,"prop_addr:", prop_addr, "size:",size)
         value = prop_addr + ( size * 2 ) + 1
         print("debug get_property_addr() returns",value)
@@ -506,7 +499,7 @@ class ZProcessor:
     def get_next_prop(self, prop_addr):
         """Calculate the address of the next property in a property list."""
         print("debug: get_next_prop()", prop_addr)
-        value = self.get_byte( prop_addr )
+        value = self.zm.read_byte( prop_addr )
         prop_addr+=1
 
         """Calculate the length of this property"""
@@ -566,9 +559,10 @@ class ZProcessor:
 
     def op_jz(self, operands):
         print("debug: opz_jz()", operands)
+        self.print_frame(self.zm.call_stack[-1],"op_jz")
         """Jump if zero"""
         if operands:
-            self.branch(operands[0] == 0)
+            self.branch(not operands[0] )
 
     def op_je(self, operands):
         """Jump if equal"""
@@ -898,6 +892,7 @@ class ZProcessor:
     #def op_loadb(self, operands): pass
     def op_loadb(self, operands):
         result = self.zm.read_byte(operands[0] + operands[1])
+        print(f"debug: reading loadb from 0x{operands[0]+operands[1]:04x}: 0x{result:02x}")
         self.store_result(result)
 
     #def op_get_prop(self, operands): pass
@@ -993,13 +988,14 @@ class ZProcessor:
 
     #def op_storew(self, operands): pass
     def op_storew(self, operands):
-        """Store a word in an array of words"""
-        self.set_word(operands[1],operands[2])
+        """Store a word"""
+        self.zm.write_byte(operands[0]+2*operands[1],operands[2])
+
 
     #def op_storeb(self, operands): pass
     def op_storeb(self, operands):
-        """Store a byte in an array of bytes"""
-        self.set_byte(operands[1],operands[2])
+        """Store a byte """
+        self.zm.write_byte(operands[0]+operands[1],operands[2])
 
     #def op_put_prop(self, operands): pass
     def op_put_prop(self, operands):
@@ -1012,7 +1008,7 @@ class ZProcessor:
         prop_addr = self.get_property_addr(obj)
         while True:
             print("debug")
-            value = self.get_byte( prop_addr)
+            value = self.zm.read_byte( prop_addr)
             print(value, property_mask, prop)
             if(value & property_mask ) <= prop:
                 break
@@ -1028,9 +1024,10 @@ class ZProcessor:
         prop_addr+=1
 
         if h_type <= 3 and not( value & 0xe0 ) or h_type >= 4 and not( value & 0xc0 ):
-            self.set_byte( prop_addr, setvalue )
+            self.zm.write_byte( prop_addr, setvalue )
         else:
-            self.set_word( prop_addr, setvalue )
+            self.zm.write_word( prop_addr, setvalue )
+
 
     #def op_random(self, operands): pass
     def op_random(self, operands):
