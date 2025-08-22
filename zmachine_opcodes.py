@@ -48,6 +48,11 @@ if h_type < 4:
     max_properties = 0x20
     property_mask = max_properties - 1
     object_size = 9
+    object_attributes = 0
+    object_parent = 4
+    object_next = 5
+    object_child = 6
+    object_prop_offset = 7
     property_size_mask = 0xe0;
 elif h_type < V8:
     address_scaler = 4;
@@ -57,6 +62,11 @@ elif h_type < V8:
     max_properties = 0x40
     property_mask = max_properties - 1
     object_size = 14
+    object_attributes = 0
+    object_parent = 6
+    object_next = 8
+    object_child = 10
+    object_prop_offset = 12
     property_size_mask = 0x3f;
 else:
     address_scaler = 8;
@@ -169,20 +179,20 @@ class ZProcessor:
             if self.instruction_count >= debug_count: print(f"debug: opcode_byte/opcode = 0x{opcode_byte:02x}/0x{opcode:02x}")
             operand_types = self.decode_operand_types()
             operand_count = len([t for t in operand_types if t != OMITTED])
+        elif opcode_byte >= 0xB0:
+            # short form: 0OP
+            form = SHORT_FORM
+            opcode = opcode_byte & 0x3F
+            operand_count = 0
+            operand_types = []
         elif opcode_byte >= 0x80:
-            # Short form: 1OP or 0OP
+            # Short form: 1OP
             form = SHORT_FORM
             opcode = opcode_byte & 0x0F
             operand_type = (opcode_byte & 0x30) >> 4
-            if operand_type == 3:
-                if self.instruction_count >= debug_count: print("debug: 0opcode")
-                opcode = opcode_byte & 0x3F # need to check why this is needed
-                operand_count = 0
-                operand_types = []
-            else:
-                if self.instruction_count >= debug_count: print("debug: 1opcode operand_type = ",operand_type)
-                operand_count = 1
-                operand_types = [operand_type]
+            if self.instruction_count >= debug_count: print("debug: 1opcode = ",opcode)
+            operand_count = 1
+            operand_types = [operand_type]
         else:
             # Long form: 2OP
             form = LONG_FORM
@@ -480,6 +490,58 @@ class ZProcessor:
         self.zm.memory[offset] = (value >> 8) &0xff
         self.zm.memory[offset+1] = value &0xff
         print("debug: set_word() sets value",value," at offset",offset)
+
+    def read_object(self, obj, field):
+        if field == object_parent:
+            self.zm.read_byte(obj + object_parent)
+        elif field == object_next:
+            self.zm.read_byte(obj + object_next)
+        else:
+            self.zm.read_byte(obj + object_child)
+
+    def write_object(self, obj, field, value):
+        """
+        #define PARENT3(offset) (offset + O3_PARENT)
+        #define NEXT3(offset) (offset + O3_NEXT)
+        #define CHILD3(offset) (offset + O3_CHILD)
+        """
+        if field == object_parent:
+            self.zm.write_byte(obj + object_parent, value)
+        elif field == object_next:
+            self.zm.write_byte(obj + object_next, value)
+        else:
+            self.zm.write_byte(obj + object_child, value)
+
+    def remove_object(self, obj):
+        objp = get_object_address( obj)
+        # Get parent of object, and return if no parent
+        parent = self.read_object, objp, object_parent)
+        if parent == 0:
+            return
+        objp = self.get_object_address( parent)
+        objc = self.read_object, parent, object_child)
+        # If object is first child then just make the parent child pointer
+        # equal to the next child 
+        if objc == obj: 
+            self.write_object( parent, object_child, read_object( objp, object_next ) )
+        else:
+            # Walk down the child chain looking for this object
+            while True:
+                childp = self.get_object_address(objc)
+                objc = self.read_object(childp, object_next)
+
+                if objc == obj:
+                    break
+
+            # Set the next pointer thre previous child to the next pointer
+            # of the current object child pointer */
+
+            self.write_object( childp, object_next, read_object( objp, object_next ) )
+            
+        # Set the parent and next child pointers to NULL
+        self.write_object( objp, object_parent, 0 )
+        self.write_object( objp, object_next, 0 )
+
 
     def get_object_addr(self, obj):
         """Calculate the address of an object in the data area."""
@@ -886,8 +948,34 @@ class ZProcessor:
 
     #def op_insert_obj(self, operands): pass
     def op_insert_obj(self, operands):
-        print("op_insert_obj() not yet supported")
-        sys.exit()
+
+        obj1 = operands[0]
+        obj2 = operands[1]
+        # Get addresses of both objects 
+        obj1p = self.get_object_addr(obj1)
+        obj2p = self.get_object_addr(obj2)
+
+        # Remove object 1 from current parent
+
+        self.remove_obj(obj1)
+
+        # Make object 2 object 1's parent 
+
+        self.write_object(obj1p, object_parent, obj2)
+
+        # Get current first child of object 2
+
+        child2 = self.read_object(obj2p, object_child)
+
+        # Make object 1 first child of object 2 *
+
+        self.write_object(obj2p, object_child, obj1)
+
+        # If object 2 had children then link them into the next child field of object 1 
+
+        if child2 != 0:
+            self.write_object(obj1p, object_next, child2)
+
 
     #def op_loadw(self, operands): pass
     def op_loadw(self, operands):
