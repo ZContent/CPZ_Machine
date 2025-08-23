@@ -312,13 +312,13 @@ class ZProcessor:
         print("debug: read_variable()",var_num)
         if var_num == 0:
             # Stack variable
-            print("debug: read stack variable")
+            #print("debug: read stack variable")
             if self.zm.call_stack:
                 f = self.zm.call_stack[-1]
                 #self.print_frame(f,len(self.zm.call_stack))
                 if(len(f.stack) > 0):
                     value = f.stack.pop()
-                    print("debug: stack value:",value)
+                    print(f"debug: read stack value {value} from stack")
                     return value
                     #return self.zm.call_stack[-1].get('stack', []).pop() if self.zm.call_stack[-1].get('stack') else 0
                 else:
@@ -326,10 +326,10 @@ class ZProcessor:
             return 0
         elif var_num <= 15:
             # Local variable
-            #print("debug: read local var")
+            print("debug: read local var")
             f = self.zm.call_stack[-1]
             if hasattr(f,"local_vars"):
-                #print(f"debug: read local var {var_num - 1}: ",f.local_vars[var_num - 1],f.local_vars)
+                print(f"debug: read local var {var_num - 1}: ",f.local_vars[var_num - 1],f.local_vars)
                 return f.local_vars[var_num - 1]
 
             return 0
@@ -340,7 +340,7 @@ class ZProcessor:
             #print(f"debug: index:{global_index}, var mem start: 0x{self.zm.variables_addr:04X}, address: 0x{addr:04X}")
             #value = self.zm.memory[addr] << 8 | self.zm.memory[addr+1]
             value = self.zm.read_word(addr)
-            #print(f"read global var {global_index} from 0x{addr:04x}: {value}")
+            print(f"read global var {global_index} from 0x{addr:04x}: {value}")
             return value
 
     def write_variable(self, var_num, value):
@@ -800,8 +800,9 @@ class ZProcessor:
 
     #def op_get_parent(self, operands): pass
     def op_get_parent(self, operands):
-        print("op_get_parent() not yet supported")
-        sys.exit()
+        objp = self.get_object_address(operands[0])
+        parent = self.zm.read_byte(objp + object_parent)
+        self.write_variable(0,parent)
 
     #def op_get_prop_len(self, operands): pass
     def op_get_prop_len(self, operands):
@@ -877,8 +878,11 @@ class ZProcessor:
 
     #def op_jin(self, operands): pass
     def op_jin(self, operands):
-        print("op_jin() not yet supported")
-        sys.exit()
+        self.op_get_parent([operands[0]])
+        parent = self.read_variable(0)
+        n = operands[1]
+        print("debug op_jin(): ", parent, n)
+        self.branch(parent == n)
 
     #def op_test(self, operands): pass
     def op_test(self, operands):
@@ -915,13 +919,17 @@ class ZProcessor:
 
     #def op_set_attr(self, operands): pass
     def op_set_attr(self, operands):
-        print("op_set_attr() not yet supported")
-        sys.exit()
+        obj = operands[0]
+        bit = operands[1]
+        objp = self.get_object_address(obj) + (bit>>3)
+        self.zm.write_byte(objp,1)
 
     #def op_clear_attr(self, operands): pass
     def op_clear_attr(self, operands):
-        print("op_clear_attr() not yet supported")
-        sys.exit()
+        obj = operands[0]
+        bit = operands[1]
+        objp = self.get_object_address(obj) + (bit>>3)
+        self.zm.write_byte(objp,0)
 
     #def op_insert_obj(self, operands): pass
     def op_insert_obj(self, operands):
@@ -1133,7 +1141,12 @@ class ZProcessor:
         #print("debug: value:",value)
         #self.write_variable(value,operands[0])
 
-        value = self.zm.call_stack[-1].stack.pop()
-        print("debug: value:",value)
-        self.write_variable(operands[0], value)
+        #svalue = self.zm.call_stack[-1].stack.pop()
+        var = operands[0]
+        #print("debug: svalue:",svalue)
+        #not sure of this logic but it works:
+        if len(operands) > 1:
+            self.zm.pc += 1
+
+        self.write_variable(var,operands[0])
 
