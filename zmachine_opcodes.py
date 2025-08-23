@@ -113,6 +113,7 @@ class ZProcessor:
             0x85: [self.op_inc,"op_inc"],        # inc
             0x86: [self.op_dec,"op_dec"],        # dec
             0x87: [self.op_print_addr,"op_print_addr"], # print_addr
+            0x8A: [self.op_print_obj,"op_print_obj"], # print_obj
             0x8B: [self.op_ret,"op_ret"],        # ret
             0x8C: [self.op_jump,"op_jump"],       # jump
             0x8D: [self.op_print_paddr,"op_print_paddr"], # print_paddr
@@ -312,13 +313,13 @@ class ZProcessor:
         print("debug: read_variable()",var_num)
         if var_num == 0:
             # Stack variable
-            print("debug: read stack variable")
+            #print("debug: read stack variable")
             if self.zm.call_stack:
                 f = self.zm.call_stack[-1]
                 #self.print_frame(f,len(self.zm.call_stack))
                 if(len(f.stack) > 0):
                     value = f.stack.pop()
-                    print("debug: stack value:",value)
+                    print(f"debug: read stack value {value} from stack")
                     return value
                     #return self.zm.call_stack[-1].get('stack', []).pop() if self.zm.call_stack[-1].get('stack') else 0
                 else:
@@ -326,10 +327,10 @@ class ZProcessor:
             return 0
         elif var_num <= 15:
             # Local variable
-            #print("debug: read local var")
+            print("debug: read local var")
             f = self.zm.call_stack[-1]
             if hasattr(f,"local_vars"):
-                #print(f"debug: read local var {var_num - 1}: ",f.local_vars[var_num - 1],f.local_vars)
+                print(f"debug: read local var {var_num - 1}: ",f.local_vars[var_num - 1],f.local_vars)
                 return f.local_vars[var_num - 1]
 
             return 0
@@ -340,7 +341,7 @@ class ZProcessor:
             #print(f"debug: index:{global_index}, var mem start: 0x{self.zm.variables_addr:04X}, address: 0x{addr:04X}")
             #value = self.zm.memory[addr] << 8 | self.zm.memory[addr+1]
             value = self.zm.read_word(addr)
-            #print(f"read global var {global_index} from 0x{addr:04x}: {value}")
+            print(f"read global var {global_index} from 0x{addr:04x}: {value}")
             return value
 
     def write_variable(self, var_num, value):
@@ -800,8 +801,9 @@ class ZProcessor:
 
     #def op_get_parent(self, operands): pass
     def op_get_parent(self, operands):
-        print("op_get_parent() not yet supported")
-        sys.exit()
+        objp = self.get_object_address(operands[0])
+        parent = self.zm.read_byte(objp + object_parent)
+        self.write_variable(0,parent)
 
     #def op_get_prop_len(self, operands): pass
     def op_get_prop_len(self, operands):
@@ -877,8 +879,11 @@ class ZProcessor:
 
     #def op_jin(self, operands): pass
     def op_jin(self, operands):
-        print("op_jin() not yet supported")
-        sys.exit()
+        self.op_get_parent([operands[0]])
+        parent = self.read_variable(0)
+        n = operands[1]
+        print("debug op_jin(): ", parent, n)
+        self.branch(parent == n)
 
     #def op_test(self, operands): pass
     def op_test(self, operands):
@@ -915,13 +920,17 @@ class ZProcessor:
 
     #def op_set_attr(self, operands): pass
     def op_set_attr(self, operands):
-        print("op_set_attr() not yet supported")
-        sys.exit()
+        obj = operands[0]
+        bit = operands[1]
+        objp = self.get_object_address(obj) + (bit>>3)
+        self.zm.write_byte(objp,1)
 
     #def op_clear_attr(self, operands): pass
     def op_clear_attr(self, operands):
-        print("op_clear_attr() not yet supported")
-        sys.exit()
+        obj = operands[0]
+        bit = operands[1]
+        objp = self.get_object_address(obj) + (bit>>3)
+        self.zm.write_byte(objp,0)
 
     #def op_insert_obj(self, operands): pass
     def op_insert_obj(self, operands):
@@ -1119,21 +1128,43 @@ class ZProcessor:
 
     #def op_push(self, operands): pass
     def op_push(self, operands):
-        self.zm.call_stack[-1].stack.append(operands[0])
+        #value = self.read_variable(operands[0])
+        value = operands[0]
+        self.zm.call_stack[-1].stack.append(value)
         #print("op_push() not yet supported")
         #sys.exit()
 
     #def op_pull(self, operands): pass
     def op_pull(self, operands):
-        #print("debug: stack size:",len(self.zm.call_stack[-1].stack))
-        #if len(self.zm.call_stack[-1].stack) == 0:
-        #   self.zm.print_error("op_pull: stack is empty")
-        #   self.zm.game_running = False
-        #   return
-        #value = self.zm.call_stack[-1].stack.pop()
+        print("debug: stack size:",len(self.zm.call_stack[-1].stack))
+        #value = self.zm.read_byte(self.zm.sp)
+        #self.zm.pc += 1
         #print("debug: value:",value)
-        value = self.zm.read_byte(self.zm.sp)
-        self.zm.pc += 1
-        print("debug: value:",value)
-        self.write_variable(value,operands[0])
+        #self.write_variable(value,operands[0])
 
+        #svalue = self.zm.call_stack[-1].stack.pop()
+        var = operands[0]
+        #print("debug: svalue:",svalue)
+        #not sure of this logic but it works:
+        if len(operands) > 1:
+            self.zm.pc += 1
+
+        self.write_variable(var,operands[0])
+
+    def op_print_obj(self, operands):
+        print("debug: op_print_obj()",operands)
+        obj = operands[0]
+        if obj == 0:
+            return
+
+
+        # Calculate address of property list
+        offset = self.get_object_address( obj )
+        offset += property_offset
+
+        # Read the property list address and skip the count byte
+        address = self.zm.read_word( offset ) + 1
+
+        # Decode and output text at address
+        text = self.decode_string( address )
+        self.zm.print_text(text)
