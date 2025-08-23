@@ -1141,7 +1141,6 @@ class ZProcessor:
         #self.zm.pc += 1
         #print("debug: value:",value)
         #self.write_variable(value,operands[0])
-
         #svalue = self.zm.call_stack[-1].stack.pop()
         var = operands[0]
         #print("debug: svalue:",svalue)
