@@ -98,6 +98,7 @@ THEMES = {
 
 class ZMachine:
     def __init__(self):
+        self.debug = 0 # debug level, 0 = no debugging output
         self.DATA_SIZE = 1024*20
         self.STACK_SIZE = 1024
         self.story_data = None
@@ -384,6 +385,10 @@ class ZMachine:
         self.text_labels[self.cursor_row].text = line
         self.cursor_row += 1
         self.cursor_col = 0
+
+    def print_debug(self, level, msg):
+        if self.debug >= level :
+            print(f"debug: {msg}")
 
     def print_error(self, error_msg):
         """Print error message in error color"""
