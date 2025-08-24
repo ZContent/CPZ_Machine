@@ -290,19 +290,14 @@ class ZProcessor:
         return types
 
     def print_frame(self, frame, i = "0"):
+        pass
         self.zm.print_debug(2,f"## frame {i}##")
-        if hasattr(frame,"return_pointer"):
-            self.zm.print_debug(2,f"return_pointer: 0x{frame.return_pointer:02X}")
-        if hasattr(frame,"result_var"):
-            self.zm.print_debug(2,f"result_var: {frame.result_var}")
-        if hasattr(frame,"variable"):
-            self.zm.print_debug(2,f"variable: {frame.variable}")
-        if hasattr(frame,"count"):
-            self.zm.print_debug(2,f"local var count: {frame.count}")
-        if hasattr(frame,"local_vars"):
-            self.zm.print_debug(2,f"local_vars: {frame.local_vars}")
-        if hasattr(frame,"stack"):
-            self.zm.print_debug(2,f"frame stack: {frame.stack}")
+        self.zm.print_debug(2,f"return_pointer: 0x{frame.return_pointer:02X}")
+        self.zm.print_debug(2,f"result_var: {frame.result_var}")
+        self.zm.print_debug(2,f"variable: {frame.variable}")
+        self.zm.print_debug(2,f"local var count: {frame.count}")
+        self.zm.print_debug(2,f"local_vars: {frame.local_vars}")
+        self.zm.print_debug(2,f"frame stack: {frame.stack}")
         self.zm.print_debug(2,"## end ##")
 
     def print_frame_stack(self):
@@ -827,28 +822,23 @@ class ZProcessor:
         result = self.get_byte(operands[0]) >> 5
         self.store_result(result)
 
-    #def op_inc(self, operands): pass
     def op_inc(self, operands):
         result = operands[0] + 1
         self.store_result(result)
 
-    #def op_dec(self, operands): pass
     def op_dec(self, operands):
         result = operands[0] - 1
         self.store_result(result)
 
-    #def op_print_addr(self, operands): pass
     def op_print_addr(self, operands):
         """Print using a real address. Real addresses are just offsets into the data region."""
         print("op_print_addr() not yet supported")
         sys.exit()
 
-    #def op_ret(self, operands): pass
     def op_ret(self, operands):
         """Return from subroutine. Restore FP and PC from stack"""
         self.return_from_routine(operands[0])
 
-    #def op_jump(self, operands): pass
     def op_jump(self, operands):
         ptr = operands[0]
         if ptr > 0 and ptr & 0x8000 != 0:
@@ -857,17 +847,14 @@ class ZProcessor:
         self.zm.print_debug(2,f"jump from 0x{self.zm.pc:04X} to 0x{(self.zm.pc+ptr):04X}")
         self.zm.pc += ptr - 2
 
-    #def op_print_paddr(self, operands): pass
     def op_print_paddr(self, operands):
         print("op_print_paddr() not yet supported")
         sys.exit()
 
-    #def op_not(self, operands): pass
     def op_not(self, operands):
         result = ~operands[0]
         self.store_result(result)
 
-    #def op_dec_chk(self, operands): pass
     def op_dec_chk(self, operands):
         result = self.read_variable(operands[0])
         result -= 1
@@ -880,14 +867,12 @@ class ZProcessor:
             b = operands[1] if operands[1] < 32768 else operands[1] - 65536
             self.branch(a < b)
 
-    #def op_inc_chk(self, operands): pass
     def op_inc_chk(self, operands):
         result = self.read_variable(operands[0])
         result += 1
         self.write_variable(operands[0],result)
         self.branch(result > operands[1])
 
-    #def op_jin(self, operands): pass
     def op_jin(self, operands):
         self.op_get_parent([operands[0]])
         parent = self.read_variable(0)
@@ -897,18 +882,15 @@ class ZProcessor:
         if(parent == n):
             self.branch(parent == n)
 
-    #def op_test(self, operands): pass
     def op_test(self, operands):
         self.branch((( ~operands[0] ) & operands[1]) == 0)
 
-    #def op_or(self, operands): pass
     def op_or(self, operands):
         result = 0
         if len(operands) >= 2:
             result = operands[0] | operands[1]
         self.store_result(result)
 
-    #def op_and(self, operands): pass
     def op_and(self, operands):
         result = 0
         if len(operands) >= 2:
@@ -919,7 +901,6 @@ class ZProcessor:
         offset = self.zm.object_table_addr + (max_properties - 1) * 2 + (obj - 1) * object_size
         return offset
 
-    #def op_test_attr(self, operands): pass
     def op_test_attr(self, operands):
         """ Test if an attribute bit is set."""
         obj = operands[0]
@@ -928,21 +909,18 @@ class ZProcessor:
         value = self.zm.read_byte(objp)
         self.branch(( value >> ( 7 - ( bit & 7 ) ) ) & 1)
 
-    #def op_set_attr(self, operands): pass
     def op_set_attr(self, operands):
         obj = operands[0]
         bit = operands[1]
         objp = self.get_object_address(obj) + (bit>>3)
         self.zm.write_byte(objp,1)
 
-    #def op_clear_attr(self, operands): pass
     def op_clear_attr(self, operands):
         obj = operands[0]
         bit = operands[1]
         objp = self.get_object_address(obj) + (bit>>3)
         self.zm.write_byte(objp,0)
 
-    #def op_insert_obj(self, operands): pass
     def op_insert_obj(self, operands):
 
         obj1 = operands[0]
@@ -1017,12 +995,10 @@ class ZProcessor:
         self.zm.pc += 1
         self.write_variable(specifier,wprop_val)
 
-    #def op_get_prop_addr(self, operands): pass
     def op_get_prop_addr(self, operands):
         print("op_get_prop_addr() not yet supported")
         sys.exit()
 
-    #def op_get_next_prop(self, operands): pass
     def op_get_next_prop(self, operands):
         print("op_get_next_prop() not yet supported")
         sys.exit()
@@ -1044,7 +1020,6 @@ class ZProcessor:
                 result = (operands[0] / operands[1]) & 0xFFFF
             self.store_result(result)
 
-    #def op_mod(self, operands): pass
     def op_mod(self, operands):
         """mod 2 numbers"""
         if len(operands) >= 2:
@@ -1143,8 +1118,6 @@ class ZProcessor:
         else:
             self.zm.write_word( prop_addr, setvalue )
 
-
-    #def op_random(self, operands): pass
     def op_random(self, operands):
         """generate random numbers"""
         range = operands[0]
@@ -1166,7 +1139,6 @@ class ZProcessor:
         #print("op_push() not yet supported")
         #sys.exit()
 
-    #def op_pull(self, operands): pass
     def op_pull(self, operands):
         self.zm.print_debug(2,f"stack size: {len(self.zm.call_stack[-1].stack)}")
         #value = self.zm.read_byte(self.zm.sp)

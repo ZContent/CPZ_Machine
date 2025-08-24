@@ -277,9 +277,9 @@ class ZMachine:
             self.init_objects()
             self.init_dictionary()
 
-            self.print_text(f"Loaded {filename} (Z{self.z_version})")
-            self.print_text(f"Story size: {len(self.story_data)} bytes")
-            self.print_text("")
+            self.print_text(f"Loaded {filename} (Z{self.z_version})\n")
+            self.print_text(f"Story size: {len(self.story_data)} bytes\n")
+            self.print_text("\n")
             return True
 
         except Exception as e:
@@ -363,7 +363,7 @@ class ZMachine:
             return
 
         #debug
-        print(text)
+        print(text, end="")
         #end debug
         lines = text.split('\n')
         for line in lines:
@@ -534,12 +534,12 @@ class ZMachine:
             story_files = [f for f in files if f.lower().endswith(('.z3', '.z5', '.z8', '.dat'))]
 
             if not story_files:
-                self.print_text("No story files found.")
-                self.print_text(f"Copy story files to {STORY_DIR}/")
+                self.print_text("No story files found.\n")
+                self.print_text(f"Copy story files to {STORY_DIR}/\n")
             else:
-                self.print_text("Available stories:")
+                self.print_text("Available stories:\n")
                 for i, filename in enumerate(story_files, 1):
-                    self.print_text(f"  {i}. {filename}")
+                    self.print_text(f"  {i}. {filename}\n")
 
             return story_files
 
@@ -550,9 +550,10 @@ class ZMachine:
     def run_interpreter(self):
         """Main Z-machine interpreter loop"""
         self.game_running = True
-        self.print_text("CircuitPython Z-Machine Interpreter")
-        self.print_text("Based on A2Z Machine by Dan Cogliano")
+        self.print_text("CircuitPython Z-Machine Interpreter\n")
+        self.print_text("Based on A2Z Machine by Dan Cogliano\n")
         self.print_text("=" * 50)
+        self.print_text("\n")
         # List available stories
         stories = self.list_stories()
         if not stories:
@@ -561,9 +562,9 @@ class ZMachine:
         # For demo, load first story automatically
         if stories:
             if self.load_story(stories[0]):
-                self.print_text("Game loaded successfully!")
-                self.print_text("Type 'help' for interpreter commands")
-                self.print_text("")
+                self.print_text("Game loaded successfully!\n")
+                self.print_text("Type 'help' for interpreter commands\n")
+                self.print_text("\n")
 
                 # Start Z-machine execution
                 self.execute_game()
@@ -583,7 +584,7 @@ class ZMachine:
                 if self.processor.instruction_count % 100 == 0:
                     time.sleep(0.001)  # Small delay to prevent blocking
             if not self.game_running :
-                print("debug: game is no longer running (interruped?)")
+                self.print_text("game is no longer running (interrupted?)\n")
         except KeyboardInterrupt:
             self.print_text("\nGame interrupted by user")
             self.game_running = False
