@@ -388,8 +388,9 @@ class ZProcessor:
                 print(f"debug: initial frame {len(self.zm.call_stack)}:")
                 self.print_frame(f,0)
             self.instruction_count += 1
-            if self.instruction_count > 200:
-                print("debug: 200 instruction limit reached")
+            maxcount = 300
+            if self.instruction_count > maxcount:
+                print(f"debug: {maxcount} instruction limit reached")
                 sys.exit()
 
             # Map opcode based on form
@@ -406,7 +407,7 @@ class ZProcessor:
             self.zm.opcode = full_opcode
             # Execute opcode
             if full_opcode in self.opcodes:
-                print(f"**start {self.instruction_count}:", self.opcodes[full_opcode][1],operands,f"pc:0x{(self.zm.pc-pccount):04x}",f"opcode:0x{opcode_byte:02X}/0x{opcode:02X}/0x{full_opcode:02X}")
+                print(f"**start {self.instruction_count}:", self.opcodes[full_opcode][1],operands,f"pc:0x{(self.zm.pc-pccount):04x}/0x{self.zm.pc:04x}",f"opcode:0x{opcode_byte:02X}/0x{opcode:02X}/0x{full_opcode:02X}")
 
                 self.opcodes[full_opcode][0](operands)
                 print(f"**end",self.opcodes[full_opcode][1],f"pc:0x{(self.zm.pc):04X}")
@@ -803,7 +804,9 @@ class ZProcessor:
     def op_get_parent(self, operands):
         objp = self.get_object_address(operands[0])
         parent = self.zm.read_byte(objp + object_parent)
-        self.write_variable(0,parent)
+        specifier = self.zm.read_byte(self.zm.pc)
+        self.zm.pc += 1
+        self.write_variable(specifier,parent)
 
     #def op_get_prop_len(self, operands): pass
     def op_get_prop_len(self, operands):
@@ -883,7 +886,9 @@ class ZProcessor:
         parent = self.read_variable(0)
         n = operands[1]
         print("debug op_jin(): ", parent, n)
-        self.branch(parent == n)
+        # not sure why but this is to avoid reading branch byte if false:
+        if(parent == n):
+            self.branch(parent == n)
 
     #def op_test(self, operands): pass
     def op_test(self, operands):
@@ -978,10 +983,40 @@ class ZProcessor:
         print(f"debug: reading loadb from 0x{operands[0]+operands[1]:04x}: 0x{result:02x}")
         self.store_result(result)
 
-    #def op_get_prop(self, operands): pass
     def op_get_prop(self, operands):
-        print("op_get_prop() not yet supported")
-        sys.exit()
+
+        obj = operands[0]
+        prop = operands[1]
+        # Load address of first property
+        prop_addr = self.get_property_addr(obj)
+
+        # Scan down the property list
+        while True:
+
+            value = self.zm.read_byte( prop_addr )
+            if ( value & property_mask ) <= prop:
+                break
+            prop_addr = self.get_next_prop( prop_addr )
+
+        # If the property ids match then load the first property
+        if  ( value & property_mask ) == prop:
+            prop_addr += 1
+            # Only load first property if it is a byte sized property
+            if h_type <= 3 and not ( value & 0xe0 ) or h_type >= 4 and not ( value & 0xc0 ):
+                bprop_val = self.zm.read_byte( prop_addr )
+                wprop_val = bprop_val
+            else:
+                wprop_val = self.zm.read_word( prop_addr )
+        else: # property not found
+            #Calculate the address of the default property
+            prop_addr = self.zm.object_table_addr + ( ( prop - 1 ) * 2 );
+            wprop_val = self.zm.read_word( prop_addr );
+
+        # store the property value
+
+        specifier = self.zm.read_byte(self.zm.pc)
+        self.zm.pc += 1
+        self.write_variable(specifier,wprop_val)
 
     #def op_get_prop_addr(self, operands): pass
     def op_get_prop_addr(self, operands):
