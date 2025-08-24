@@ -97,6 +97,16 @@ THEMES = {
 }
 
 class ZMachine:
+    THEMES = {
+        'default': {
+            'bg': 0x000000,      # Black
+            'text': 0xFFFFFF,    # White
+            'status': 0x00FF00,  # Green
+            'input': 0xFFFF00,   # Yellow
+            'error': 0xFF0000    # Red
+        }
+    }
+
     def __init__(self):
         self.debug = 0 # debug level, 0 = no debugging output
         self.DATA_SIZE = 1024*20
@@ -393,7 +403,7 @@ class ZMachine:
     def print_error(self, error_msg):
         """Print error message in error color"""
         #debug
-        print("*** ERROR: ", error_msg)
+        print(f"*** ERROR: {error_msg}")
         return
         #end debug
         theme = THEMES[self.current_theme]
@@ -427,6 +437,7 @@ class ZMachine:
     def get_input(self):
         """Get input from keyboard handler"""
         if self.keyboard_handler:
+            #return input()
             return self.keyboard_handler.get_input_line()
         else:
             print("> ", end="")

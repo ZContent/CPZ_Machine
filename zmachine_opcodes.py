@@ -162,6 +162,7 @@ class ZProcessor:
     def fetch_instruction(self):
         """Fetch and decode the next instruction"""
         debug_count = 99999
+        #debug_count = 270
         if self.instruction_count >= debug_count:
             self.zm.debug = 2 # turn on debugging output
         pccount = self.zm.pc
@@ -672,8 +673,8 @@ class ZProcessor:
 
             # Store in text buffer (simplified)
             max_len = self.zm.read_byte(text_buffer)
-            input_bytes = user_input.encode('ascii', errors='ignore')[:max_len]
-
+            #input_bytes = user_input.encode('ascii', errors='ignore')[:max_len]
+            input_bytes = user_input.encode('ascii', 'ignore')[:max_len]
             self.zm.write_byte(text_buffer + 1, len(input_bytes))
             for i, byte_val in enumerate(input_bytes):
                 self.zm.write_byte(text_buffer + 2 + i, byte_val)
@@ -709,6 +710,14 @@ class ZProcessor:
         else:
             self.zm.game_running = False
 
+    def write_zchar(self, c):
+        c = c & 0xff
+        if " " <= c and c <= "~":
+            print(c)
+        elif c == 13:
+            print("\r")
+        # don't care about other characters at this time
+
     def decode_string(self, addr):
         """Decode Z-machine string"""
         #print(f"debug: decode_string(addr=0x{addr:04x})")
@@ -737,8 +746,23 @@ class ZProcessor:
                     text += syntext
                     shift_state = shift_lock
                 elif zscii_flag:
-                    self.zm.print_error("zscii_flag not yet supported")
-                    sys.exit()
+                    """
+                    If this is the first part ZSCII ten-bit code then remember it.
+                    Because the codes are only 5 bits you need two codes to make
+                    one eight bit ASCII character. The first code contains the
+                    top 5 bits (although only 3 bits are used at the moment).
+                    The second code contains the bottom 5 bits.
+                    """
+                    if zscii_flag == 1:
+                        zscii_flag += 1
+                        zscii = char_code << 5
+                    else:
+                        """
+                        If this is the second part of a ten-bit ZSCII code then assemble the
+                        character from the two codes and output it.
+                        """
+                        zscii_flag = 0
+                        self.write_zchar( zscii | char_code)
                 elif char_code > 5:
                     char_code -= 6
                     if shift_state == 2 and char_code == 0:
@@ -868,7 +892,7 @@ class ZProcessor:
         self.op_get_parent([operands[0]])
         parent = self.read_variable(0)
         n = operands[1]
-        self.zm.print_debug(2,f"debug op_jin(): {parent} {n}")
+        self.zm.print_debug(2,f"op_jin(): {parent} {n}")
         # not sure why but this is to avoid reading branch byte if false:
         if(parent == n):
             self.branch(parent == n)
