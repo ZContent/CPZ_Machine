@@ -121,6 +121,8 @@ class ZMachine:
         #self.global_vars = [0] * 240  # Z-machine global variables
         self.objects = {}
         self.dictionary = {}
+        self.dictionary_size = 0
+        self.dictionary_offset = 0
         self.current_theme = 'default'
         self.display = None
         self.keyboard_handler = None
@@ -131,6 +133,7 @@ class ZMachine:
         self.cursor_row = 2  # Start below status line
         self.cursor_col = 0
         self.status_line = ""
+        self.lines_written = 0
         self.z_version = 0
         self.current_opcode = None # for stack trace (future)
         self.game_running = False

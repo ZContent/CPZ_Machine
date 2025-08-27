@@ -8,6 +8,7 @@ interactive fiction games like Zork.
 
 import sys
 import random
+import re
 
 # Z-machine instruction types
 LONG_FORM = 0
@@ -37,6 +38,7 @@ v3_lookup_table = [
    " \n0123456789.,!?_#'\"/\\-:()"
 ]
 
+h_words_offset = 8
 h_type = 3
 
 if h_type < 4:
@@ -161,8 +163,8 @@ class ZProcessor:
 
     def fetch_instruction(self):
         """Fetch and decode the next instruction"""
-        debug_count = 99999
-        #debug_count = 270
+        #debug_count = 99999
+        debug_count = 170
         if self.instruction_count >= debug_count:
             self.zm.debug = 2 # turn on debugging output
         pccount = self.zm.pc
@@ -657,24 +659,193 @@ class ZProcessor:
             num = operands[0] if operands[0] < 32768 else operands[0] - 65536
             self.zm.print_text(str(num))
 
+    # Format and output the status line for type 3 games only.
+    def show_status(self):
+        # more work is needed, just show location name for now
+        if self.read_variable(16) != 0 :
+            self.op_print_obj([self.read_variable( 16 )])
+
+    """
+    Search the dictionary for a word. Just encode the word and binary chop the
+    dictionary looking for it.
+    """
+    def find_word(self,token, chop, entry_size ):
+        self.zm.print_debug(2,f"find_word() {token}")
+        buff = []*3
+        word_index = 0
+        offset = 0
+        status = 0
+
+        # Don't look up the word if there are no dictionary entries
+        if self.zm.dictionary_size == 0:
+            return 0
+
+        # Encode target word */
+        buff = self.encode_string( len(token), token);
+
+        """
+        Do a binary chop search on the main dictionary, otherwise do
+        a linear search
+        """
+        word_index = chop - 1
+        if self.zm.dictionary_size > 0:
+            # binary chop until word is found
+            while chop > 0:
+                chop = int(chop / 2)
+                # Calculate dictionary offset
+                if word_index > (self.zm.dictionary_size -1):
+                    word_index = self.zm.dictionary_size -1
+                offset = self.zm.dictionary_offset + ( word_index * entry_size )
+                #print(f"debug: index: {word_index}/{chop} compare: 0x{buff[0]:04x} with 0x{self.zm.read_word(offset + 0):04x}, offset: {offset}")
+                status1 = buff[0] - self.zm.read_word(offset + 0)
+                status2 = buff[1] - self.zm.read_word(offset + 2)
+                status3 = buff[2] - self.zm.read_word(offset + 4)
+                status = status1
+                # if word matches then return dictionary offset
+                if status1 == 0 and status2 == 0 and (h_type < 4 or status3 == 0):
+                    self.zm.print_debug(2,f"'{token}' found at offset {offset}")
+                    return offset
+                if status > 0:
+                    word_index += chop
+
+                    # deal with end of dictionary case
+                    if word_index >= self.zm.dictionary_size:
+                        word_index = self.zm.dictionary_size - 1
+                else:
+                    word_index -= chop
+                    # Deal with start of dictionary case
+                    if word_index < 0:
+                        word_index = 0
+
+        else:
+            for word_index in range(0, -self.zm.dictionary_size, 1):
+                # calculate dictionary offset
+                offset = self.zm.dictionary_offset + (word_index * entry_size)
+                # if word matches then return dictionary offset
+                status1 = buff[0] - self.zm.read_word(offset + 0)
+                status2 = buff[1] - self.zm.read_word(offset + 2)
+                status3 = buff[2] - self.zm.read_word(offset + 4)
+                if status1 == 0 and status2 == 0 and (h_type < 4 or status3 == 0):
+                    self.zm.print_debug(2,f"'{token}' found at offset {offset}")
+                    return offset
+
+        self.zm.print_debug(2,"'{token}' not found")
+        return 0
+
+    """
+    Convert a typed input line into tokens. The token buffer needs some
+    additional explanation. The first byte is the maximum number of tokens
+    allowed. The second byte is set to the actual number of token read. Each
+    token is composed of 3 fields. The first (word) field contains the word
+    offset in the dictionary, the second (byte) field contains the token length,
+    and the third (byte) field contains the start offset of the token in the
+    character buffer.
+    """
+    def tokenize_line(self,char_buf, token_buf, dictionary, flag):
+        self.zm.print_debug(2,f"tokenize line() char_buf:{char_buf} token_buf:{token_buf} dictionary:0x{dictionary:04x} flag:0x{flag:02x}")
+        if h_type > 4:
+            slen = self.zm.read_byte(char_buf + 1)
+            str_end = char_buf + 2 + slen
+        else:
+            slen = 0
+            while self.zm.read_byte(char_buf + slen) != 0:
+                slen += 1
+            str_end = char_buf + 1 + slen;
+
+        # Initialise word count and pointers
+        words = 0
+        if h_type > 4:
+            cp = char_buf + 2
+        else:
+            cp = char_buf + 1
+
+        tp = token_buf + 2;
+
+        buff = ""
+        for i in range(slen):
+            buff += chr(self.zm.read_byte(char_buf + i))
+        # Initialise dictionary
+        dictp = self.zm.read_word(dictionary)
+        count = self.zm.read_byte(dictp)
+        dictp += 1
+        self.zm.print_debug(2,f"dictp:0x{dictp:04x} count:{count}")
+
+        delims = ""
+        punctuation = [0] * 16
+        for i in range(count):
+            #punctuation[i] = self.zm.read_byte(dictp)
+            delims += chr(self.zm.read_byte(dictp))
+            dictp += 1
+        entry_size = self.zm.read_byte(dictp)
+        dictp += 1
+        self.zm.dictionary_size = self.zm.read_word(dictp)
+        self.zm.dictionary_offset = dictp + 2
+        self.zm.print_debug(2,f"dict size: {self.zm.dictionary_size} offset: {self.zm.dictionary_offset}")
+        delims = "[" + delims + " \t\n\r\f.,?" + "]"
+        # Calculate the binary chop start position
+        if self.zm.dictionary_size > 0:
+            word_index = self.zm.dictionary_size / 2
+            chop = 1
+            while True:
+                chop *= 2
+                word_index = int(word_index / 2)
+                if word_index == 0:
+                    break
+        max_tokens = self.zm.read_byte(token_buf)
+        regex = re.compile(delims)
+        tokens = regex.split(buff)
+        words = 0
+        self.zm.print_debug(2,f"buff: '{buff}' to tokens: {tokens}")
+        for token in tokens:
+            # Get the word offset from the dictionary
+            word = self.find_word(token, chop, entry_size)
+            if words < max_tokens and word != 0:
+                self.zm.write_byte(token_buf + words*4 + 0, word >> 8)
+                self.zm.write_byte(token_buf + words*4 + 1, word & 0xff)
+                self.zm.write_byte(token_buf + words*4 + 2, len(token))
+                self.zm.write_byte(token_buf + words*4 + 2, buff.find(token))
+                words += 1
+
     def op_sread(self, operands):
         """Read string from user"""
+        self.zm.print_debug(0,f"op_sread() {operands}")
         if len(operands) >= 2:
             text_buffer = operands[0]
             parse_buffer = operands[1] if len(operands) > 1 else 0
+
+            # Refresh status line
+            if h_type < 4:
+                self.show_status()
+
+            # Reset line count
+            self.zm.lines_written = 0
+
+            # Initialise character pointer and initial read size
+
+            #cbuf = ( char * ) &datap[argv[0]]
+            #in_size = ( h_type > 4 ) ? cbuf[1] : 0;
+            cbuf = operands[0]
+            if h_type > 4:
+                in_size = self.zm.read_byte(cbuf + 1)
+            else:
+                in_size = 0
 
             # Get user input (simplified)
             user_input = self.zm.get_input()
 
             # Store in text buffer (simplified)
             max_len = self.zm.read_byte(text_buffer)
-            #input_bytes = user_input.encode('ascii', errors='ignore')[:max_len]
-            input_bytes = user_input.encode('ascii', 'ignore')[:max_len]
-            self.zm.write_byte(text_buffer + 1, len(input_bytes))
-            for i, byte_val in enumerate(input_bytes):
-                self.zm.write_byte(text_buffer + 2 + i, byte_val)
 
-            # Parse buffer handling would go here (simplified)
+            # convert string to lowercase
+            user_input = user_input.lower()
+            for i in range(len(user_input)):
+                self.zm.write_byte(cbuf+i, ord(user_input[i]))
+            # Tokenize the line, if a token buffer is present */
+
+            if operands[1]:
+                self.tokenize_line( operands[0], operands[1], h_words_offset, 0 )
+            #print("done for now in op_sread()")
+            #sys.exit()
 
     def store_result(self, value):
         """Store result of instruction"""
@@ -712,6 +883,129 @@ class ZProcessor:
         elif c == 13:
             print("\r")
         # don't care about other characters at this time
+
+    def encode_string(self, len, s):
+        # Encode Z-machine string
+        self.zm.print_debug(0,f"encode_string() '{s}', len:{len}")
+        codes = [0]*9
+        buffer = [0]*3
+
+        # Initialise codes count and prev_table number
+        codes_count = 0
+        prev_table = 0
+
+        pos = 0
+        while len > 0:
+            len -= 1
+
+            """
+            Set the table and code to be the ASCII character inducer, then
+            look for the character in the three lookup tables. If the
+            character isn't found then it will be an ASCII character.
+            """
+            table = 2
+            code = 0
+
+            for i in range(3):
+                for j in range(26):
+                    if v3_lookup_table[i][j] == s[pos]:
+                        table = i
+                        code = j
+
+            """
+            Type 1 and 2 games differ on how the shift keys are used. Switch
+            now depending on the game version.
+            """
+            if h_type < 3:
+
+                """
+                If the current table is the same as the previous table then
+                just store the character code, otherwise switch tables.
+                """
+                if table != prev_table:
+
+                    #Find the table for the next character
+                    next_table = 0
+                    if len > 0:
+                        next_table = 2
+                        for i in range(3):
+                            for j in range(26):
+                                if v3_lookup_table[i][j] == s[pos+1]:
+                                    next_table = i
+
+                    """
+                    Calculate the shift key. This magic. See the description in
+                    decode_text for more information on version 1 and 2 shift
+                    key changes.
+                    """
+                    shift_state = ( table + ( prev_table * 2 ) ) % 3
+
+                    #Only store the shift key if there is a change in table */
+
+                    if shift_state != 0:
+
+                        """
+                        If the next character as the uses the same table as
+                        this character then change the shift from a single
+                        shift to a shift lock. Also remember the current
+                        table for the next iteration.
+                        """
+                        if next_table == table:
+                            shift_state += 2
+                            prev_table = table
+                        else:
+                            prev_table = 0
+
+                        # Store the code in the codes buffer
+                        if codes_count < 9:
+                            codes[codes_count] = shift_state + 1
+                            codes_count += 1
+
+            else:
+
+                """
+                For V3 games each uppercase or punctuation table is preceded
+                by a separate shift key. If this is such a shift key then
+                put it in the codes buffer.
+                """
+                if table != 0 and codes_count < 9:
+                    codes[codes_count] = table + 3
+                    codes_count += 1
+            # Put the character code in the code buffer
+            if codes_count < 9:
+                codes[codes_count] = code + 6
+                codes_count += 1
+
+            """
+            Cannot find character in table so treat it as a literal ASCII
+            code. The ASCII code inducer (code 0 in table 2) is followed by
+            the high 3 bits of the ASCII character followed by the low 5
+            bits to make 8 bits in total.
+            """
+            if table == 2 and code == 0:
+                if codes_count < 9:
+                    codes[codes_count] = s[pos] >> 5 & 0x07
+                    codes_count += 1
+                if codes_count < 9:
+                    codes[codes_count] = s[pos] & 0x1f
+            # Advance to next character
+            pos += 1
+
+        # Pad out codes with shift 5's
+        for i in range(codes_count,9):
+            codes[i] = 5
+        print("debug:",codes)
+        # Pack codes into buffer
+        buffer[0] = codes[0] << 10 | codes[1] << 5 | codes[2]
+        buffer[1] = codes[3] << 10 | codes[4] << 5 | codes[5]
+        buffer[2] = codes[6] << 10 | codes[7] << 5 | codes[8]
+
+        # Terminate buffer at 6 or 9 codes depending on the version
+        if h_type < 4:
+            buffer[1] |= 0x8000
+        else:
+            buffer[2] |= 0x8000
+        return buffer
 
     def decode_string(self, addr):
         """Decode Z-machine string"""
@@ -1158,7 +1452,6 @@ class ZProcessor:
         obj = operands[0]
         if obj == 0:
             return
-
 
         # Calculate address of property list
         offset = self.get_object_address( obj )
