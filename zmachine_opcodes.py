@@ -1291,18 +1291,21 @@ class ZProcessor:
     def op_mul(self, operands):
         """multiply 2 numbers"""
         if len(operands) >= 2:
-            result = (operands[0] * operands[1]) % 0x10000
+            a = operands[0] if operands[0] < 32768 else operands[0] - 65536
+            b = operands[1] if operands[1] < 32768 else operands[1] - 65536
+            result = (a * b) % 0x10000
             self.store_result(result)
 
     def op_div(self, operands):
         """divide 2 numbers"""
-        # future: check signed numbers?
         if len(operands) >= 2:
-            if(operands[1] == 0):
+            a = operands[0] if operands[0] < 32768 else operands[0] - 65536
+            b = operands[1] if operands[1] < 32768 else operands[1] - 65536
+            if(b == 0):
                 self.zm.print_error("divide by zero error: Result set to 32767 (0x7fff).") # need better error routine
                 result = 32767;
             else:
-                result = (operands[0] / operands[1]) & 0xFFFF
+                result = (a / b) & 0xFFFF
             self.store_result(result)
 
     def op_mod(self, operands):
