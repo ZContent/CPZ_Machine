@@ -164,7 +164,7 @@ class ZProcessor:
     def fetch_instruction(self):
         """Fetch and decode the next instruction"""
         #debug_count = 99999
-        debug_count = 170
+        debug_count = 140
         if self.instruction_count >= debug_count:
             self.zm.debug = 2 # turn on debugging output
         pccount = self.zm.pc
@@ -264,12 +264,12 @@ class ZProcessor:
                 operands.append(value)
             elif op_type == SMALL_CONSTANT:
                 value = self.zm.read_byte(self.zm.pc)
-                self.zm.print_debug(2,f"debug fetch instruction: read small constant: pc=0x{self.zm.pc:02X}, value={value}")
+                self.zm.print_debug(2,f"fetch instruction: read small constant: pc=0x{self.zm.pc:02X}, value={value}")
                 self.zm.pc += 1
                 operands.append(value)
             elif op_type == VARIABLE:
                 var_num = self.zm.read_byte(self.zm.pc)
-                self.zm.print_debug(2,f"debug fetch instruction: read variable: pc=0x{self.zm.pc:02X}, var_num={var_num}")
+                self.zm.print_debug(2,f"fetch instruction: read variable: pc=0x{self.zm.pc:02X}, var_num={var_num}")
                 self.zm.pc += 1
                 if var_num <= 15:
                     self.print_frame(self.zm.call_stack[-1],"fetch_instruction")
@@ -294,12 +294,12 @@ class ZProcessor:
     def print_frame(self, frame, i = "0"):
         pass
         self.zm.print_debug(2,f"## frame {i}##")
-        self.zm.print_debug(2,f"return_pointer: 0x{frame.return_pointer:02X}")
-        self.zm.print_debug(2,f"result_var: {frame.result_var}")
-        self.zm.print_debug(2,f"variable: {frame.variable}")
-        self.zm.print_debug(2,f"local var count: {frame.count}")
-        self.zm.print_debug(2,f"local_vars: {frame.local_vars}")
-        self.zm.print_debug(2,f"frame stack: {frame.stack}")
+        self.zm.print_debug(2,f"# return_pointer: 0x{frame.return_pointer:02X}")
+        self.zm.print_debug(2,f"# result_var: {frame.result_var}")
+        self.zm.print_debug(2,f"# variable: {frame.variable}")
+        self.zm.print_debug(2,f"# local var count: {frame.count}")
+        self.zm.print_debug(2,f"# local_vars: {frame.local_vars}")
+        self.zm.print_debug(2,f"# stack: {frame.stack}")
         self.zm.print_debug(2,"## end ##")
 
     def print_frame_stack(self):
@@ -312,7 +312,7 @@ class ZProcessor:
         """Read value from variable"""
         if var_num == 0:
             # Stack variable
-            #print("debug: read stack variable")
+            self.zm.print_debug(2,"read stack variable")
             if self.zm.call_stack:
                 f = self.zm.call_stack[-1]
                 #self.print_frame(f,len(self.zm.call_stack))
@@ -321,6 +321,7 @@ class ZProcessor:
                     self.zm.print_debug(2,f"read stack value {value} from stack")
                     return value
                 else:
+                    self.zm.print_debug(2,"warning: stack is empty")
                     return 0
             return 0
         elif var_num <= 15:
@@ -863,6 +864,7 @@ class ZProcessor:
             #self.print_frame_stack()
             #self.zm.call_stack.pop()
             f = self.zm.call_stack.pop()
+            self.print_frame_stack()
             #self.print_frame(f,len(self.zm.call_stack))
             if len(self.zm.call_stack) == 0:
                 self.zm.print_error("call stack is empty")
