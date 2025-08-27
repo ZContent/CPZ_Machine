@@ -1098,9 +1098,10 @@ class ZProcessor:
     def op_get_parent(self, operands):
         objp = self.get_object_address(operands[0])
         parent = self.zm.read_byte(objp + object_parent)
-        specifier = self.zm.read_byte(self.zm.pc)
-        self.zm.pc += 1
-        self.write_variable(specifier,parent)
+        self.store_result(result)
+        #specifier = self.zm.read_byte(self.zm.pc)
+        #self.zm.pc += 1
+        #self.write_variable(specifier,parent)
 
     #def op_get_prop_len(self, operands): pass
     def op_get_prop_len(self, operands):
@@ -1159,13 +1160,15 @@ class ZProcessor:
         self.branch(result > operands[1])
 
     def op_jin(self, operands):
-        self.op_get_parent([operands[0]])
-        parent = self.read_variable(0)
+        objp = self.get_object_address(operands[0])
+        parent = self.zm.read_byte(objp + object_parent)
+        #self.op_get_parent([operands[0]])
+        #parent = self.read_variable(0)
         n = operands[1]
         self.zm.print_debug(2,f"op_jin(): {parent} {n}")
         # not sure why but this is to avoid reading branch byte if false:
-        if(parent == n):
-            self.branch(parent == n)
+        #if(parent == n):
+        self.branch(parent == n)
 
     def op_test(self, operands):
         self.branch((( ~operands[0] ) & operands[1]) == 0)
