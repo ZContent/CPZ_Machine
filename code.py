@@ -118,6 +118,7 @@ class ZMachine:
         self.pc = 0  # Program counter
         self.call_stack = []
         self.sp = self.STACK_SIZE - 2
+        self.data_stack = []
         #self.global_vars = [0] * 240  # Z-machine global variables
         self.objects = {}
         self.dictionary = {}
@@ -360,14 +361,14 @@ class ZMachine:
                 self.read_byte(self.dictionary_addr + 1 + i)
             )
 
+    # future work needed
     def print_text(self, text):
         """Print text to display"""
         if not text:
             return
 
-        #debug
         print(text, end="")
-        #end debug
+        """
         lines = text.split('\n')
         for line in lines:
             # Word wrap if necessary
@@ -384,6 +385,7 @@ class ZMachine:
 
             if line or not self.text_buffer[self.cursor_row]:
                 self.add_text_line(line)
+        """
 
     def add_text_line(self, line):
         """Add a line of text to the display"""
