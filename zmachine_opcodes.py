@@ -866,6 +866,9 @@ class ZProcessor:
             self.zm.pc = newpc
         else:
             self.zm.game_running = False
+        # save return value
+        # future: check if returning from function call in later ZM versions
+        self.store_result(value)
 
     def write_zchar(self, c):
         c = c & 0xff
@@ -1331,7 +1334,7 @@ class ZProcessor:
             #    if operands[i] > 0 and operands[i] & 0x8000:
             #        operands[i] = operands[i] - 0x10000 # make negative
             f = Frame()
-            f.return_pointer = self.zm.pc + 1
+            f.return_pointer = self.zm.pc
             if len(self.zm.call_stack) >= self.zm.STACK_SIZE:
                 self.zm.print_error("stack is out of memory")
                 sys.exit()
