@@ -1445,13 +1445,13 @@ class ZProcessor:
             self.zm.print_debug(2,"warning: data stack is empty")
             self.zm.print_error("data stack is empty in op_pull()")
             self.zm.game_running = False
-            return 0
             value = 0
         #not sure of this logic but it works:
         #if len(operands) > 1:
         #    self.zm.pc += 1
 
-        #self.write_variable(var,value)
+        self.write_variable(var,value)
+        return
 
     def op_print_obj(self, operands):
         obj = operands[0]
