@@ -271,8 +271,8 @@ class ZProcessor:
                 var_num = self.zm.read_byte(self.zm.pc)
                 self.zm.print_debug(2,f"fetch instruction: read variable: pc=0x{self.zm.pc:02X}, var_num={var_num}")
                 self.zm.pc += 1
-                if var_num <= 15:
-                    self.print_frame(self.zm.call_stack[-1],"fetch_instruction")
+                #if var_num <= 15:
+                #    self.print_frame(self.zm.call_stack[-1],"fetch_instruction")
                 operands.append(self.read_variable(var_num))
         pccount = self.zm.pc - pccount
         return opcode, operands, form, pccount, opcode_byte
@@ -325,12 +325,10 @@ class ZProcessor:
                 return 0
         elif var_num <= 15:
             # Local variable
-            self.zm.print_debug(2,"read local var")
             f = self.zm.call_stack[-1]
-            if hasattr(f,"local_vars"):
-                self.zm.print_debug(2,f"read local var {var_num - 1}: {f.local_vars[var_num - 1]} {f.local_vars}")
-                return f.local_vars[var_num - 1]
-
+            #if hasattr(f,"local_vars"):
+            self.zm.print_debug(2,f"read local var {var_num - 1}: {f.local_vars[var_num - 1]} {f.local_vars}")
+            return f.local_vars[var_num - 1]
             return 0
         else:
             # Global variable
