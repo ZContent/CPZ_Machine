@@ -1436,6 +1436,9 @@ class ZProcessor:
     def op_pull(self, operands):
         self.zm.print_debug(2,f"stack size: {len(self.zm.call_stack[-1].data_stack)}")
         var = operands[0]
+        self.store_result(var)
+        return
+
         if len(self.zm.call_stack[-1].data_stack) > 0:
             value = self.zm.call_stack[-1].data_stack.pop()
         else:
@@ -1445,10 +1448,10 @@ class ZProcessor:
             return 0
             value = 0
         #not sure of this logic but it works:
-        if len(operands) > 1:
-            self.zm.pc += 1
+        #if len(operands) > 1:
+        #    self.zm.pc += 1
 
-        self.write_variable(var,value)
+        #self.write_variable(var,value)
 
     def op_print_obj(self, operands):
         obj = operands[0]
