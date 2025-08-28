@@ -108,7 +108,7 @@ class ZMachine:
     }
 
     def __init__(self):
-        self.debug = 0 # debug level, 0 = no debugging output
+        self.debug = 2 # debug level, 0 = no debugging output
         self.DATA_SIZE = 1024*20
         self.STACK_SIZE = 1024
         self.story_data = None
@@ -118,7 +118,7 @@ class ZMachine:
         self.pc = 0  # Program counter
         self.call_stack = []
         self.sp = self.STACK_SIZE - 2
-        self.data_stack = []
+        #self.data_stack = []
         #self.global_vars = [0] * 240  # Z-machine global variables
         self.objects = {}
         self.dictionary = {}

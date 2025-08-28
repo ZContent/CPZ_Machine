@@ -88,6 +88,7 @@ class Frame:
         self.arg_count = 0 # for +V5 versions
         self.count = 0
         self.local_vars = [0]*15
+        self.data_stack = []
 
 class ZProcessor:
     def __init__(self, zmachine):
@@ -162,8 +163,8 @@ class ZProcessor:
 
     def fetch_instruction(self):
         """Fetch and decode the next instruction"""
-        #debug_count = 999999
-        debug_count = 180
+        debug_count = 999999
+        #debug_count = 180
         if self.instruction_count >= debug_count:
             self.zm.debug = 2 # turn on debugging output
         pccount = self.zm.pc
@@ -196,7 +197,7 @@ class ZProcessor:
             form = SHORT_FORM
             opcode = opcode_byte & 0x0F
             operand_type = (opcode_byte & 0x30) >> 4
-            self.zm.print_debug(2,"1opcode = {opcode}")
+            self.zm.print_debug(2,f"1opcode = {opcode}")
             operand_count = 1
             operand_types = [operand_type]
         else:
@@ -270,8 +271,8 @@ class ZProcessor:
                 var_num = self.zm.read_byte(self.zm.pc)
                 self.zm.print_debug(2,f"fetch instruction: read variable: pc=0x{self.zm.pc:02X}, var_num={var_num}")
                 self.zm.pc += 1
-                if var_num <= 15:
-                    self.print_frame(self.zm.call_stack[-1],"fetch_instruction")
+                #if var_num <= 15:
+                #    self.print_frame(self.zm.call_stack[-1],"fetch_instruction")
                 operands.append(self.read_variable(var_num))
         pccount = self.zm.pc - pccount
         return opcode, operands, form, pccount, opcode_byte
@@ -292,40 +293,42 @@ class ZProcessor:
 
     def print_frame(self, frame, i = "0"):
         pass
-        self.zm.print_debug(2,f"## frame {i}##")
+        self.zm.print_debug(2,f"## frame {i} ##")
         self.zm.print_debug(2,f"# return_pointer: 0x{frame.return_pointer:02X}")
         self.zm.print_debug(2,f"# result_var: {frame.result_var}")
         self.zm.print_debug(2,f"# variable: {frame.variable}")
         self.zm.print_debug(2,f"# local var count: {frame.count}")
         self.zm.print_debug(2,f"# local_vars: {frame.local_vars}")
+        self.zm.print_debug(2,f"# data stack: {frame.data_stack}")
         self.zm.print_debug(2,"## end ##")
 
     def print_frame_stack(self):
-            self.zm.print_debug(2,"### frame stack ###")
-            for i in range(len(self.zm.call_stack)):
-                self.print_frame(self.zm.call_stack[i],i)
-            self.zm.print_debug(2,"### end ###")
+            self.zm.print_debug(2,"### frame stack top ###")
+            #for i in range(len(self.zm.call_stack)):
+            for i in range(len(self.zm.call_stack), 0, -1):
+                self.print_frame(self.zm.call_stack[i-1],i)
+            self.zm.print_debug(2,"### frame stack bottom ###")
 
     def read_variable(self, var_num):
         """Read value from variable"""
         if var_num == 0:
             # Stack variable
-            self.zm.print_debug(2,"read stack variable")
-            if(len(self.zm.data_stack) > 0):
-                value = self.zm.data_stack.pop()
+            if(len(self.zm.call_stack[-1].data_stack) > 0):
+                value = self.zm.call_stack[-1].data_stack.pop()
                 self.zm.print_debug(2,f"read data stack value {value}")
+                self.zm.print_debug(1,f"data stack({len(self.zm.call_stack[-1].data_stack)}): {self.zm.call_stack[-1].data_stack}")
                 return value
             else:
-                self.zm.print_debug(2,"warning: stack is empty")
+                #self.zm.print_debug(2,"warning: data stack is empty")
+                self.zm.print_error("data stack is empty in read_variable()")
+                self.zm.game_running = False
                 return 0
         elif var_num <= 15:
             # Local variable
-            self.zm.print_debug(2,"read local var")
             f = self.zm.call_stack[-1]
-            if hasattr(f,"local_vars"):
-                self.zm.print_debug(2,f"read local var {var_num - 1}: {f.local_vars[var_num - 1]} {f.local_vars}")
-                return f.local_vars[var_num - 1]
-
+            #if hasattr(f,"local_vars"):
+            self.zm.print_debug(2,f"read local var {var_num - 1}: {f.local_vars[var_num - 1]} {f.local_vars}")
+            return f.local_vars[var_num - 1]
             return 0
         else:
             # Global variable
@@ -344,8 +347,9 @@ class ZProcessor:
 
         if var_num == 0:
             # Stack variable
-            self.zm.print_debug(2,f"write data stack variable {value}")
-            self.zm.data_stack.append(value)
+            self.zm.call_stack[-1].data_stack.append(value)
+            self.zm.print_debug(2,f"write data stack value {value}")
+            self.zm.print_debug(1,f"data stack({len(self.zm.call_stack[-1].data_stack)}): {self.zm.call_stack[-1].data_stack}")
         elif var_num <= 15:
             # Local variable
             if value > 0 and (value & 0x800) != 0:
@@ -396,7 +400,6 @@ class ZProcessor:
             # Execute opcode
             if full_opcode in self.opcodes:
                 self.zm.print_debug(1,f"**start {self.instruction_count}:{self.opcodes[full_opcode][1]} {operands} pc:0x{(self.zm.pc-pccount):04x}/0x{self.zm.pc:04x} opcode:0x{opcode_byte:02X}/0x{opcode:02X}/0x{full_opcode:02X}")
-                self.zm.print_debug(1,f"data stack({len(self.zm.data_stack)}): {self.zm.data_stack}")
                 self.opcodes[full_opcode][0](operands)
                 self.zm.print_debug(1,f"**end {self.opcodes[full_opcode][1]} pc:0x{(self.zm.pc):04X}")
             else:
@@ -420,7 +423,7 @@ class ZProcessor:
     """
     def branch(self, condition):
         """Handle conditional branch"""
-        self.zm.print_debug(2,"branch() {condition}")
+        self.zm.print_debug(2,f"branch() {condition}")
         self.zm.print_debug(2,f"pc = 0x{self.zm.pc:02X}")
 
         branch_byte = self.zm.read_byte(self.zm.pc)
@@ -565,8 +568,8 @@ class ZProcessor:
 
     def op_ret_popped(self, operands):
         """Return popped value from stack"""
-        if len(self.zm.data_stack) > 0:
-            value = self.zm.data_stack.pop()
+        if len(self.zm.call_stack[-1].data_stack) > 0:
+            value = self.zm.call_stack[-1].data_stack.pop()
         else:
             value = 0
         self.return_from_routine(value)
@@ -841,6 +844,7 @@ class ZProcessor:
         """Store result of instruction"""
         result_var = self.zm.read_byte(self.zm.pc)
         self.zm.pc += 1
+        self.zm.print_debug(2,f"store_result(): write_variable({result_var}, {value})")
         self.write_variable(result_var, value)
 
     def return_from_routine(self, value):
@@ -1100,7 +1104,7 @@ class ZProcessor:
     #def op_get_parent(self, operands): pass
     def op_get_parent(self, operands):
         objp = self.get_object_address(operands[0])
-        parent = self.zm.read_byte(objp + object_parent)
+        result = self.zm.read_byte(objp + object_parent)
         self.store_result(result)
         #specifier = self.zm.read_byte(self.zm.pc)
         #self.zm.pc += 1
@@ -1427,15 +1431,18 @@ class ZProcessor:
 
     def op_push(self, operands):
         value = operands[0]
-        self.zm.data_stack.append(value)
+        self.zm.call_stack[-1].data_stack.append(value)
 
     def op_pull(self, operands):
-        self.zm.print_debug(2,f"stack size: {len(self.zm.data_stack)}")
+        self.zm.print_debug(2,f"stack size: {len(self.zm.call_stack[-1].data_stack)}")
         var = operands[0]
-        if len(self.zm.data_stack) > 0:
-            value = self.zm.data_stack.pop()
+        if len(self.zm.call_stack[-1].data_stack) > 0:
+            value = self.zm.call_stack[-1].data_stack.pop()
         else:
             self.zm.print_debug(2,"warning: data stack is empty")
+            self.zm.print_error("data stack is empty in op_pull()")
+            self.zm.game_running = False
+            return 0
             value = 0
         #not sure of this logic but it works:
         if len(operands) > 1:
