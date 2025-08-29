@@ -394,8 +394,10 @@ class ZProcessor:
                 else:
                     full_opcode = 0x80 | opcode  # 1OP opcodes
             else:  # VARIABLE_FORM
-                full_opcode = 0x20 | opcode  # VAR opcodes
-
+                if opcode & 0x10 == 0:
+                    full_opcode = opcode # 2OP opcodes
+                else:
+                    full_opcode = 0x20 | opcode  # VAR opcodes
             self.zm.opcode = full_opcode
             # Execute opcode
             if full_opcode in self.opcodes:
