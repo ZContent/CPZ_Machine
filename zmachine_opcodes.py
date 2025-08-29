@@ -204,7 +204,7 @@ class ZProcessor:
             # Long form: 2OP
             form = LONG_FORM
             opcode = opcode_byte & 0x1F
-            self.zm.print_debug(2,"2opcode byte = {opcode}")
+            self.zm.print_debug(2,f"2opcode byte = {opcode}")
             operand_count = 2
             operand_types = [
                 SMALL_CONSTANT if (opcode_byte & 0x40) == 0 else VARIABLE,
@@ -1096,12 +1096,17 @@ class ZProcessor:
         print("op_get_sibling() not yet supported")
         sys.exit()
 
-    #def op_get_child(self, operands): pass
+    """
+    Load the child object pointer of an object and jump if the child pointer is
+    not NULL.
+    """
     def op_get_child(self, operands):
-        print("op_get_child() not yet supported")
-        sys.exit()
+        obj = operands[0]
+        child = self.read_object(self.get_object_address(obj), object_child)
+        self.branch(child != 0)
+        #print("op_get_child() not yet supported")
+        #sys.exit()
 
-    #def op_get_parent(self, operands): pass
     def op_get_parent(self, operands):
         objp = self.get_object_address(operands[0])
         result = self.zm.read_byte(objp + object_parent)
@@ -1290,11 +1295,35 @@ class ZProcessor:
         self.zm.pc += 1
         self.write_variable(specifier,wprop_val)
 
+    """
+    Load the address address of the data associated with a property.
+    """
     def op_get_prop_addr(self, operands):
-        print("op_get_prop_addr() not yet supported")
-        sys.exit()
+        obj = operands[0]
+        prop = operands[1]
+
+        # load address of first property
+        prop_addr = self.get_property_addr(obj)
+
+        while(True):
+            value = self.zm.read_byte(prop_addr)
+            if (value & property_mask) <= prop:
+                break
+            prop_addr = self.get_next_property(prop_addr)
+
+        # if the property id was found, cal the prop addr, else return zero
+        if (value & property_mask) == prop:
+            if (h_type >= 4 and (value&0x80)):
+                prop_addr += 1
+            self.store_result(prop_addr + 1)
+        else:
+            self.store_result(0)
 
     def op_get_next_prop(self, operands):
+
+        """
+
+        """
         print("op_get_next_prop() not yet supported")
         sys.exit()
 
@@ -1376,10 +1405,20 @@ class ZProcessor:
             self.print_frame(f,"test")
             self.zm.print_debug(2,f">> stack size # {len(self.zm.call_stack)} (append)")
 
-    #def op_storew(self, operands): pass
     def op_storew(self, operands):
         """Store a word"""
-        self.zm.write_byte(operands[0]+2*operands[1],operands[2])
+        addr = operands[0]
+        offset = operands[1]
+        value = operands[2]
+        addr2 = addr + offset * 2
+        if addr > len(self.zm.story_data):
+            self.zm.print_error("Attempted to write outside of data area")
+            sys.exit()
+        self.zm.print_debug(0,f"addr:{addr} offset:{offset} value={value}")
+        self.zm.print_debug(0,f"write_word() to 0x{addr2:04x}: {value}")
+        self.zm.write_word(addr2, value)
+
+        #self.zm.write_byte(operands[0]+2*operands[1],operands[2])
 
 
     #def op_storeb(self, operands): pass
@@ -1402,7 +1441,13 @@ class ZProcessor:
             if(value & property_mask ) <= prop:
                 break
             prop_addr = self.get_next_prop(prop_addr)
+            if value & property_mask <= prop:
+                break
 
+        # if the property id wasn't found then complain
+        if (value & property_mask) != prop:
+            self.vm.print_error("load_next_property(): no such property")
+            sys.exit()
         # If the property id was found, store a new value, otherwise complain */
         if ( value & property_mask ) != prop:
             self.zm.print_error("error: store_property(): No such property")
@@ -1436,7 +1481,11 @@ class ZProcessor:
     def op_pull(self, operands):
         self.zm.print_debug(2,f"stack size: {len(self.zm.call_stack[-1].data_stack)}")
         var = operands[0]
-        self.store_result(var)
+
+        #not sure of this logic but it works:
+        if len(operands) > 1:
+            self.zm.pc += 1
+        self.write_variable(0,operands[0])
         return
 
         if len(self.zm.call_stack[-1].data_stack) > 0:
