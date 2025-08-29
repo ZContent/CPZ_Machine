@@ -147,6 +147,7 @@ class ZProcessor:
             0x16: [self.op_mul,"op_mul"],        # mul
             0x17: [self.op_div,"op_div"],        # div
             0x18: [self.op_mod,"op_mod"],        # mod
+            0x19: [self.op_call_2s,"op_call_2s"],# call 2s
 
             # VAR opcodes
             0x20: [self.op_call,"op_call"],       # call (call_vs in v4+)
@@ -394,10 +395,11 @@ class ZProcessor:
                 else:
                     full_opcode = 0x80 | opcode  # 1OP opcodes
             else:  # VARIABLE_FORM
-                if opcode & 0x10 == 0:
+                if opcode_byte & 0x20 == 0:
                     full_opcode = opcode # 2OP opcodes
                 else:
                     full_opcode = 0x20 | opcode  # VAR opcodes
+                #print(f"opcode_byte:0x{opcode_byte:02x} opcode:0x{opcode:02x} full_opcode:0x{full_opcode:02x}")
             self.zm.opcode = full_opcode
             # Execute opcode
             if full_opcode in self.opcodes:
@@ -1519,3 +1521,7 @@ class ZProcessor:
         # Decode and output text at address
         text = self.decode_string( address )
         self.zm.print_text(text)
+
+    def op_call_2s(self, operands):
+        print("op_call_2s() not yet supported")
+        sys.exit()
