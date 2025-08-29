@@ -108,7 +108,7 @@ class ZMachine:
     }
 
     def __init__(self):
-        self.debug = 2 # debug level, 0 = no debugging output
+        self.debug = 0 # debug level, 0 = no debugging output
         self.DATA_SIZE = 1024*20
         self.STACK_SIZE = 1024
         self.story_data = None

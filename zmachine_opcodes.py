@@ -1418,8 +1418,6 @@ class ZProcessor:
         if addr > len(self.zm.story_data):
             self.zm.print_error("Attempted to write outside of data area")
             sys.exit()
-        self.zm.print_debug(0,f"addr:{addr} offset:{offset} value={value}")
-        self.zm.print_debug(0,f"write_word() to 0x{addr2:04x}: {value}")
         self.zm.write_word(addr2, value)
 
         #self.zm.write_byte(operands[0]+2*operands[1],operands[2])
