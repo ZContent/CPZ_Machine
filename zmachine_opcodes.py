@@ -381,7 +381,7 @@ class ZProcessor:
                 #print(f"debug: initial frame {len(self.zm.call_stack)}:")
                 self.print_frame(f,0)
             self.instruction_count += 1
-            maxcount = 300
+            maxcount = 500
             if self.instruction_count > maxcount:
                 self.zm.print_error(f"{maxcount} instruction limit reached")
                 sys.exit()
@@ -462,15 +462,23 @@ class ZProcessor:
                 self.zm.pc += branch_offset - 2
         self.zm.print_debug(2,f"return branch(), branch_offset = 0x{branch_offset:04X}, pc = 0x{self.zm.pc:04X}")
 
+    def print_object(self, obj):
+        objp = self.get_object_address(obj)
+        self.zm.print_debug(2,f"~~Object {obj}(0x{objp:04x}):")
+        self.zm.print_debug(2,f"~parent: {self.zm.read_byte(objp + object_parent)}")
+        self.zm.print_debug(2,f"~next: {self.zm.read_byte(objp + object_next)}")
+        self.zm.print_debug(2,f"~child: {self.zm.read_byte(objp + object_child)}")
+
     def read_object(self, obj, field):
         self.zm.print_debug(2,f"read_object() {obj} {field}")
         if field == object_parent:
-            self.zm.read_byte(obj + object_parent)
+            result = self.zm.read_byte(obj + object_parent)
         elif field == object_next:
-            self.zm.read_byte(obj + object_next)
+            result = self.zm.read_byte(obj + object_next)
         else:
-            self.zm.read_byte(obj + object_child)
-        self.zm.print_debug(2,"read_object() done")
+            result = self.zm.read_byte(obj + object_child)
+        self.zm.print_debug(2,f"read_object() returns {result}")
+        return result
 
     def write_object(self, obj, field, value):
         self.zm.print_debug(2,f"write_obj() {obj} {field} {value}")
@@ -483,13 +491,17 @@ class ZProcessor:
             self.zm.write_byte(obj + object_child, value)
         self.zm.print_debug(2,"write_obj() done")
 
+    """
+    Remove an object by unlinking from the its parent object and from its
+    siblings.
+    """
     def remove_object(self, obj):
         self.zm.print_debug(2,f"remove_object() {obj}")
         objp = self.get_object_address( obj)
         # Get parent of object, and return if no parent
         parent = self.read_object( objp, object_parent)
-        self.zm.print_debug(2,"parent: {parent}")
-        if parent is None:
+        self.zm.print_debug(2,f"parent: {parent}")
+        if parent == 0:
             return
         objp = self.get_object_address( parent)
         objc = self.read_object( parent, object_child)
@@ -505,7 +517,7 @@ class ZProcessor:
 
                 if objc == obj:
                     break
-            # Set the next pointer thre previous child to the next pointer
+            # Set the next pointer the previous child to the next pointer
             # of the current object child pointer */
 
             self.write_object( childp, object_next, read_object( objp, object_next ) )
@@ -1095,25 +1107,32 @@ class ZProcessor:
         print("op_catch() not yet supported")
         sys.exit()
 
-    #def op_get_sibling(self, operands): pass
     def op_get_sibling(self, operands):
-        print("op_get_sibling() not yet supported")
-        sys.exit()
+        self.zm.print_debug(2,f"op_get_sibling({operands[0]})")
+        obj = operands[0]
+        next = self.read_object(self.get_object_address(obj), object_next)
+        self.zm.print_debug(2,f"sibling is {next}")
+        self.store_result(next)
+        self.branch(next != 0)
 
     """
     Load the child object pointer of an object and jump if the child pointer is
     not NULL.
     """
     def op_get_child(self, operands):
+        self.zm.print_debug(2,f"op_get_child({operands[0]})")
         obj = operands[0]
         child = self.read_object(self.get_object_address(obj), object_child)
+        self.zm.print_debug(2,f"child is {child}")
+        self.store_result(child)
         self.branch(child != 0)
-        #print("op_get_child() not yet supported")
-        #sys.exit()
 
     def op_get_parent(self, operands):
+        self.zm.print_debug(2,f"op_get_parent({operands[0]})")
+        self.print_object(operands[0])
         objp = self.get_object_address(operands[0])
         result = self.zm.read_byte(objp + object_parent)
+        self.zm.print_debug(2,f"op_get_parent() returns {result}")
         self.store_result(result)
         #specifier = self.zm.read_byte(self.zm.pc)
         #self.zm.pc += 1
@@ -1225,8 +1244,13 @@ class ZProcessor:
         objp = self.get_object_address(obj) + (bit>>3)
         self.zm.write_byte(objp,0)
 
+    """
+    Insert object 1 as the child of object 2 after first removing it from its
+    previous parent. The object is inserted at the front of the child object
+    chain.
+    """
     def op_insert_obj(self, operands):
-
+        self.zm.print_debug(2,f"op_insert_obj({operands[0]} {operands[1]})")
         obj1 = operands[0]
         obj2 = operands[1]
         # Get addresses of both objects
@@ -1250,8 +1274,9 @@ class ZProcessor:
 
         # If object 2 had children then link them into the next child field of object 1
 
-        if child2 is not None:
+        if child2 != 0:
             self.write_object(obj1p, object_next, child2)
+
 
     #def op_loadw(self, operands): pass
     def op_loadw(self, operands):
