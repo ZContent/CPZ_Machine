@@ -1144,12 +1144,14 @@ class ZProcessor:
         self.store_result(result)
 
     def op_inc(self, operands):
-        result = operands[0] + 1
-        self.store_result(result)
+        result = self.read_variable(operands[0])
+        result += 1
+        self.write_variable(operands[0],result)
 
     def op_dec(self, operands):
-        result = operands[0] - 1
-        self.store_result(result)
+        result = self.read_variable(operands[0])
+        result -= 1
+        self.write_variable(operands[0],result)
 
     def op_print_addr(self, operands):
         """Print using a real address. Real addresses are just offsets into the data region."""
