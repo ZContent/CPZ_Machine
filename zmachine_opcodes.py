@@ -165,7 +165,7 @@ class ZProcessor:
     def fetch_instruction(self):
         """Fetch and decode the next instruction"""
         debug_count = 999999
-        #debug_count = 180
+        #debug_count = 385
         if self.instruction_count >= debug_count:
             self.zm.debug = 2 # turn on debugging output
         pccount = self.zm.pc
@@ -313,7 +313,7 @@ class ZProcessor:
             self.zm.print_debug(1,f"data stack({len(self.zm.call_stack[-1].data_stack)}): {self.zm.call_stack[-1].data_stack}")
         elif var_num <= 15:
             # Local variable
-            if value > 0 and (value & 0x800) != 0:
+            if value > 0 and (value & 0x8000) != 0:
                 value = value - 0x10000 # make negative
             f = self.zm.call_stack[-1]
             if hasattr(f,"local_vars"):
@@ -341,7 +341,7 @@ class ZProcessor:
                 #print(f"debug: initial frame {len(self.zm.call_stack)}:")
                 self.print_frame(f,0)
             self.instruction_count += 1
-            maxcount = 500
+            maxcount = 3000
             if self.instruction_count > maxcount:
                 self.zm.print_error(f"{maxcount} instruction limit reached")
                 sys.exit()
@@ -463,28 +463,30 @@ class ZProcessor:
         self.zm.print_debug(2,f"parent: {parent}")
         if parent == 0:
             return
-        objp = self.get_object_address( parent)
-        objc = self.read_object( parent, object_child)
+        # Get address of parent object
+        parentp = self.get_object_address( parent)
+        # Find first child of parent
+        child = self.read_object( parentp, object_child)
         # If object is first child then just make the parent child pointer
         # equal to the next child
-        if objc == obj:
-            self.write_object( parent, object_child, read_object( objp, object_next ) )
+        if child == obj:
+            self.write_object( parentp, object_child, self.read_object( objp, object_next ) )
         else:
             # Walk down the child chain looking for this object
             while True:
-                childp = self.get_object_address(objc)
-                objc = self.read_object(childp, object_next)
+                childp = self.get_object_address(child)
+                child = self.read_object(childp, object_next)
 
-                if objc == obj:
+                if child == obj:
                     break
             # Set the next pointer the previous child to the next pointer
             # of the current object child pointer */
 
-            self.write_object( childp, object_next, read_object( objp, object_next ) )
+            self.write_object( childp, object_next, self.read_object( objp, object_next ) )
 
         # Set the parent and next child pointers to NULL
-        self.write_object( objp, object_parent, None )
-        self.write_object( objp, object_next, None )
+        self.write_object( objp, object_parent, 0 )
+        self.write_object( objp, object_next, 0 )
         self.zm.print_debug(2,"remove_object() done")
 
     def get_property_addr(self, obj):
@@ -532,7 +534,7 @@ class ZProcessor:
         """Print literal string"""
         text = self.decode_string(self.zm.pc)
         self.zm.print_text(text)
-        #print("debug: string:",text)
+        self.zm.print_debug(2,f"op_string: '{text}'")
         # Skip over the string
         self.zm.pc = self.skip_string(self.zm.pc)
 
@@ -556,7 +558,7 @@ class ZProcessor:
 
     def op_new_line(self, operands):
         """Print newline"""
-        self.zm.print_text("\r\n")
+        self.zm.print_text("\n")
 
     def op_jz(self, operands):
         #self.print_frame(self.zm.call_stack[-1],"op_jz")
@@ -768,12 +770,20 @@ class ZProcessor:
         for token in tokens:
             # Get the word offset from the dictionary
             word = self.find_word(token, chop, entry_size)
-            if words < max_tokens and word != 0:
-                self.zm.write_byte(token_buf + words*4 + 0, word >> 8)
-                self.zm.write_byte(token_buf + words*4 + 1, word & 0xff)
-                self.zm.write_byte(token_buf + words*4 + 2, len(token))
-                self.zm.write_byte(token_buf + words*4 + 2, buff.find(token))
+            if words <= max_tokens: # and word != 0:
+                self.zm.write_byte(2+token_buf + words*4 + 0, word >> 8)
+                self.zm.write_byte(2+token_buf + words*4 + 1, word & 0xff)
+                self.zm.write_byte(2+token_buf + words*4 + 2, len(token))
+                self.zm.write_byte(2+token_buf + words*4 + 3, buff.find(token))
                 words += 1
+        self.zm.write_byte(token_buf,59)
+        self.zm.write_byte(token_buf+1,words)
+
+        #print("token buffer:[ ",end="")
+        #for i in range(2+words*4):
+        #    print(f"{self.zm.read_byte(token_buf + i):02x} ",end="")
+        #print("]")
+        #print("buff:",buff)
 
     def op_sread(self, operands):
         """Read string from user"""
@@ -799,22 +809,24 @@ class ZProcessor:
             else:
                 in_size = 0
 
-            # Get user input (simplified)
+            # Get user input
             user_input = self.zm.get_input()
+            self.instruction_count = 1 # reset for each input
 
             # Store in text buffer (simplified)
             max_len = self.zm.read_byte(text_buffer)
 
             # convert string to lowercase
-            user_input = user_input.lower()
-            for i in range(len(user_input)):
-                self.zm.write_byte(cbuf+i, ord(user_input[i]))
+            # user_input = user_input.lower()
+            for i in range(max_len):
+                if i < len(user_input):
+                    self.zm.write_byte(cbuf+i, ord(user_input[i]))
+                else:
+                    self.zm.write_byte(cbuf+i,0)
             # Tokenize the line, if a token buffer is present */
 
             if operands[1]:
                 self.tokenize_line( operands[0], operands[1], h_words_offset, 0 )
-            #print("done for now in op_sread()")
-            #sys.exit()
 
     def store_result(self, value):
         """Store result of instruction"""
@@ -860,7 +872,7 @@ class ZProcessor:
 
     def encode_string(self, len, s):
         # Encode Z-machine string
-        self.zm.print_debug(0,f"encode_string() '{s}', len:{len}")
+        self.zm.print_debug(2,f"encode_string() '{s}', len:{len}")
         codes = [0]*9
         buffer = [0]*3
 
@@ -968,7 +980,7 @@ class ZProcessor:
         # Pad out codes with shift 5's
         for i in range(codes_count,9):
             codes[i] = 5
-        print("debug:",codes)
+        #print("debug:",codes)
         # Pack codes into buffer
         buffer[0] = codes[0] << 10 | codes[1] << 5 | codes[2]
         buffer[1] = codes[3] << 10 | codes[4] << 5 | codes[5]
@@ -993,7 +1005,7 @@ class ZProcessor:
         synonym = 0
         while addr < len(self.zm.memory):
             word = self.zm.read_word(addr)
-            #print(f"debug: read word 0x{word:02X} at address 0x{addr:04X}")
+            self.zm.print_debug(2,f"debug: read word 0x{word:04x} at address 0x{addr:04x}")
             addr += 2
             zscii_flag = 0
 
@@ -1005,7 +1017,7 @@ class ZProcessor:
                     synonym = ( synonym - 1 ) * 64
                     saddr = self.zm.read_word( self.zm.synonyms_offset + synonym + ( char_code * 2 ) ) * 2
                     syntext = self.decode_string( saddr )
-                    #print(f"debug: synonym at 0x{saddr:04x} is '{syntext}'")
+                    self.zm.print_debug(2,f"debug: synonym at 0x{saddr:04x} is '{syntext}'")
                     text += syntext
                     shift_state = shift_lock
                 elif zscii_flag:
@@ -1025,6 +1037,7 @@ class ZProcessor:
                         character from the two codes and output it.
                         """
                         zscii_flag = 0
+                        self.zm.print_debug(2,f"write_char: 0x{zscii|charcode:02x} ({chr(zscii|charcode)}")
                         self.write_zchar( zscii | char_code)
                 elif char_code > 5:
                     char_code -= 6
@@ -1047,7 +1060,7 @@ class ZProcessor:
                             shift_state = char_code - 3
                             shift_lock = 0
 
-            if word & 0x8000:  # End bit set
+            if (word & 0x8000) != 0:  # End bit set
                 break
 
         return text
@@ -1100,8 +1113,24 @@ class ZProcessor:
 
     #def op_get_prop_len(self, operands): pass
     def op_get_prop_len(self, operands):
-        result = self.get_byte(operands[0]) >> 5
-        self.store_result(result)
+        prop_addr = operands[0]
+        if prop_addr == 0:
+            self.store_result(0)
+            return
+
+        # Back up the property pointer to the property id */
+        prop_addr -= 1
+        value = self.zm.read_byte(prop_addr)
+
+        if h_type <= 3:
+            value = ( value >>  5 ) + 1
+        elif not (value & 0x80) :
+            value = ( value >>  6 ) + 1
+        else:
+            value = value & property_size_mask
+            if value == 0:
+                value = 64 # spec 1.0
+        self.store_result( value )
 
     def op_inc(self, operands):
         result = self.read_variable(operands[0])
@@ -1139,22 +1168,18 @@ class ZProcessor:
         self.store_result(result)
 
     def op_dec_chk(self, operands):
-        result = self.read_variable(operands[0])
-        result -= 1
-        result = operands[0] - 1
-        self.store_result(result)
-        self.write_variable(operands[0],result)
         if len(operands) >= 2:
-            # Convert to signed 16-bit
-            a = result if result < 32768 else result - 65536
-            b = operands[1] if operands[1] < 32768 else operands[1] - 65536
-            self.branch(a < b)
+            result = self.read_variable(operands[0])
+            result -= 1
+            self.write_variable(operands[0],result)
+            self.branch(result < operands[1])
 
     def op_inc_chk(self, operands):
-        result = self.read_variable(operands[0])
-        result += 1
-        self.write_variable(operands[0],result)
-        self.branch(result > operands[1])
+        if len(operands) >= 2:
+            result = self.read_variable(operands[0])
+            result += 1
+            self.write_variable(operands[0],result)
+            self.branch(result > operands[1])
 
     def op_jin(self, operands):
         objp = self.get_object_address(operands[0])
@@ -1227,15 +1252,12 @@ class ZProcessor:
         self.write_object(obj1p, object_parent, obj2)
 
         # Get current first child of object 2
-
         child2 = self.read_object(obj2p, object_child)
 
         # Make object 1 first child of object 2 *
-
         self.write_object(obj2p, object_child, obj1)
 
         # If object 2 had children then link them into the next child field of object 1
-
         if child2 != 0:
             self.write_object(obj1p, object_next, child2)
 
@@ -1300,7 +1322,7 @@ class ZProcessor:
             value = self.zm.read_byte(prop_addr)
             if (value & property_mask) <= prop:
                 break
-            prop_addr = self.get_next_property(prop_addr)
+            prop_addr = self.get_next_prop(prop_addr)
 
         # if the property id was found, cal the prop addr, else return zero
         if (value & property_mask) == prop:
@@ -1308,6 +1330,7 @@ class ZProcessor:
                 prop_addr += 1
             self.store_result(prop_addr + 1)
         else:
+            # No property found, just return 0
             self.store_result(0)
 
     def op_get_next_prop(self, operands):
@@ -1335,7 +1358,7 @@ class ZProcessor:
                 self.zm.print_error("divide by zero error: Result set to 32767 (0x7fff).") # need better error routine
                 result = 32767;
             else:
-                result = (a / b) & 0xFFFF
+                result = int(a / b) & 0xFFFF
             self.store_result(result)
 
     def op_mod(self, operands):

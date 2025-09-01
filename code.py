@@ -139,6 +139,7 @@ class ZMachine:
         self.current_opcode = None # for stack trace (future)
         self.game_running = False
         self.text_labels = []
+        self.line_buff = ""
 
         # Z-machine header addresses
         self.dictionary_addr = 0
@@ -366,26 +367,31 @@ class ZMachine:
         """Print text to display"""
         if not text:
             return
+        print(text,end="")
+        return
+        self.line_buff += text
+        if self.line_buff[-1] == '\n':
+            # print line
+            print(self.line_buff, end='')
+            lines = self.line_buff.split('\n')
+            self.line_buff = ""
+            """
+            for line in lines:
+                # Word wrap if necessary
+                while len(line) > TEXT_COLS:
+                    # Find last space within column limit
+                    break_pos = TEXT_COLS
+                    for i in range(TEXT_COLS - 1, 0, -1):
+                        if line[i] == ' ':
+                            break_pos = i
+                            break
 
-        print(text, end="")
-        """
-        lines = text.split('\n')
-        for line in lines:
-            # Word wrap if necessary
-            while len(line) > TEXT_COLS:
-                # Find last space within column limit
-                break_pos = TEXT_COLS
-                for i in range(TEXT_COLS - 1, 0, -1):
-                    if line[i] == ' ':
-                        break_pos = i
-                        break
+                    self.add_text_line(line[:break_pos])
+                    line = line[break_pos:].lstrip()
 
-                self.add_text_line(line[:break_pos])
-                line = line[break_pos:].lstrip()
-
-            if line or not self.text_buffer[self.cursor_row]:
-                self.add_text_line(line)
-        """
+                if line or not self.text_buffer[self.cursor_row]:
+                    self.add_text_line(line)
+            """
 
     def add_text_line(self, line):
         """Add a line of text to the display"""
@@ -478,7 +484,7 @@ class ZMachine:
                 for frame in self.call_stack:
                     f.write(frame.to_bytes(2, 'big'))
 
-            self.print_text(f"Game saved as {save_name}")
+            self.print_text(f"Game saved as {save_name}\n")
             return True
 
         except Exception as e:
@@ -516,7 +522,7 @@ class ZMachine:
                     frame = int.from_bytes(f.read(2), 'big')
                     self.call_stack.append(frame)
 
-            self.print_text(f"Game restored from {save_name}")
+            self.print_text(f"Game restored from {save_name}\n")
             return True
 
         except Exception as e:
@@ -528,9 +534,9 @@ class ZMachine:
         if theme_name in THEMES:
             self.current_theme = theme_name
             self.setup_text_display()  # Refresh display with new colors
-            self.print_text(f"Theme changed to: {theme_name}")
+            self.print_text(f"Theme changed to: {theme_name}\n")
         else:
-            self.print_error(f"Unknown theme: {theme_name}")
+            self.print_error(f"Unknown theme: {theme_name}\n")
 
     def list_stories(self):
         """List available story files"""
@@ -549,7 +555,7 @@ class ZMachine:
             return story_files
 
         except Exception as e:
-            self.print_error(f"Error listing stories: {e}")
+            self.print_error(f"Error listing stories: {e}\n")
             return []
 
     def run_interpreter(self):
@@ -613,7 +619,7 @@ class ZMachine:
                     theme_name = cmd[6:]
                     self.change_theme(theme_name)
                 elif cmd == 'themes':
-                    self.print_text("Available themes:")
+                    self.print_text("Available themes:\n")
                     for theme in THEMES.keys():
                         self.print_text(f"  {theme}")
                 elif cmd == 'help':
