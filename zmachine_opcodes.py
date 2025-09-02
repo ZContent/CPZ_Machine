@@ -677,7 +677,7 @@ class ZProcessor:
                 status = status1
                 # if word matches then return dictionary offset
                 if status1 == 0 and status2 == 0 and (h_type < 4 or status3 == 0):
-                    self.zm.print_debug(3,f"'{token}' found at offset {offset}")
+                    self.zm.print_debug(3,f"'{token}' found at offset {offset} (binary search)")
                     return offset
                 if status > 0:
                     word_index += chop
@@ -700,10 +700,10 @@ class ZProcessor:
                 status2 = buff[1] - self.zm.read_word(offset + 2)
                 status3 = buff[2] - self.zm.read_word(offset + 4)
                 if status1 == 0 and status2 == 0 and (h_type < 4 or status3 == 0):
-                    self.zm.print_debug(3,f"'{token}' found at offset {offset}")
+                    self.zm.print_debug(3,f"'{token}' found at offset {offset} (linear search)")
                     return offset
 
-        self.zm.print_debug(3,"'{token}' not found")
+        self.zm.print_debug(3,f"'{token}' not found")
         return 0
 
     """
