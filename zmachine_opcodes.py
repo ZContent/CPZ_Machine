@@ -1284,15 +1284,26 @@ class ZProcessor:
         if child2 != 0:
             self.write_object(obj1p, object_next, child2)
 
+    """
+    Load a word from an array of words
+    """
     def op_loadw(self, operands):
         result = self.zm.read_word(operands[0] + operands[1] * 2)
         self.store_result(result)
 
+    """
+    Load a byte from an array of bytes
+    """
     def op_loadb(self, operands):
         result = self.zm.read_byte(operands[0] + operands[1])
-        #print(f"debug: reading loadb from 0x{operands[0]+operands[1]:04x}: 0x{result:02x}")
         self.store_result(result)
 
+    """
+    Load a property from a property list. Properties are held in list sorted by
+    property id, with highest ids first. There is also a concept of a default
+    property for loading only. The default properties are held in a table pointed
+    to be the object pointer, and occupy the space before the first object.
+    """
     def op_get_prop(self, operands):
 
         obj = operands[0]
@@ -1475,12 +1486,10 @@ class ZProcessor:
         #self.zm.write_byte(operands[0]+2*operands[1],operands[2])
 
 
-    #def op_storeb(self, operands): pass
     def op_storeb(self, operands):
         """Store a byte """
         self.zm.write_byte(operands[0]+operands[1],operands[2])
 
-    #def op_put_prop(self, operands): pass
     def op_put_prop(self, operands):
         """Store a property value in a property list. The property must exist in the
         property list to be replaced."""
@@ -1537,9 +1546,10 @@ class ZProcessor:
         var = operands[0]
 
         #not sure of this logic but it works:
-        if len(operands) > 1:
-            self.zm.pc += 1
-        self.write_variable(0,operands[0])
+        #if len(operands) > 1:
+        #    self.zm.pc += 1
+        value = self.zm.call_stack[-1].data_stack.pop()
+        self.write_variable(operands[0],value)
         return
 
         if len(self.zm.call_stack[-1].data_stack) > 0:
@@ -1549,9 +1559,6 @@ class ZProcessor:
             self.zm.print_error("data stack is empty in op_pull()")
             self.zm.game_running = False
             value = 0
-        #not sure of this logic but it works:
-        #if len(operands) > 1:
-        #    self.zm.pc += 1
 
         self.write_variable(var,value)
         return
