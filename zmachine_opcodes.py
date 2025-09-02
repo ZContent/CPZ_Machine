@@ -429,26 +429,26 @@ class ZProcessor:
         self.zm.print_debug(3,f"~next: {self.zm.read_byte(objp + object_next)}")
         self.zm.print_debug(3,f"~child: {self.zm.read_byte(objp + object_child)}")
 
-    def read_object(self, obj, field):
-        self.zm.print_debug(3,f"read_object() {obj} {field}")
+    def read_object(self, objp, field):
+        self.zm.print_debug(3,f"read_object() {objp} {field}")
         if field == object_parent:
-            result = self.zm.read_byte(obj + object_parent)
+            result = self.zm.read_byte(objp + object_parent)
         elif field == object_next:
-            result = self.zm.read_byte(obj + object_next)
+            result = self.zm.read_byte(objp + object_next)
         else:
-            result = self.zm.read_byte(obj + object_child)
+            result = self.zm.read_byte(objp + object_child)
         self.zm.print_debug(3,f"read_object() returns {result}")
         return result
 
-    def write_object(self, obj, field, value):
-        self.zm.print_debug(3,f"write_obj() {obj} {field} {value}")
+    def write_object(self, objp, field, value):
+        self.zm.print_debug(3,f"write_obj() {objp} {field} {value}")
 
         if field == object_parent:
-            self.zm.write_byte(obj + object_parent, value)
+            self.zm.write_byte(objp + object_parent, value)
         elif field == object_next:
-            self.zm.write_byte(obj + object_next, value)
+            self.zm.write_byte(objp + object_next, value)
         else:
-            self.zm.write_byte(obj + object_child, value)
+            self.zm.write_byte(objp + object_child, value)
         self.zm.print_debug(3,"write_obj() done")
 
     """
@@ -457,13 +457,16 @@ class ZProcessor:
     """
     def remove_object(self, obj):
         self.zm.print_debug(3,f"remove_object() {obj}")
-        objp = self.get_object_address( obj)
+        objp = self.get_object_address(obj)
+
         # Get parent of object, and return if no parent
         parent = self.read_object( objp, object_parent)
+
         self.zm.print_debug(3,f"parent: {parent}")
         if parent == 0:
             return
         # Get address of parent object
+
         parentp = self.get_object_address( parent)
         # Find first child of parent
         child = self.read_object( parentp, object_child)
@@ -1231,14 +1234,25 @@ class ZProcessor:
     def op_set_attr(self, operands):
         obj = operands[0]
         bit = operands[1]
+        # get attribute address
         objp = self.get_object_address(obj) + (bit>>3)
-        self.zm.write_byte(objp,1)
+        # load attribute byte
+        value = self.zm.read_byte(objp)
+        # set attribute bit
+        value |= 1 << ( 7 - ( bit & 7 ) )
+        self.zm.write_byte(objp,value)
 
     def op_clear_attr(self, operands):
         obj = operands[0]
         bit = operands[1]
+        # get attribute address
         objp = self.get_object_address(obj) + (bit>>3)
-        self.zm.write_byte(objp,0)
+        # load attribute address
+        value = self.zm.read_byte(objp)
+        # clear attribute bit
+        value &= ~ ( 1 << ( 7 - ( bit & 7 ) ) )
+        # store attribute byte
+        self.zm.write_byte(objp,value)
 
     """
     Insert object 1 as the child of object 2 after first removing it from its
@@ -1270,13 +1284,10 @@ class ZProcessor:
         if child2 != 0:
             self.write_object(obj1p, object_next, child2)
 
-
-    #def op_loadw(self, operands): pass
     def op_loadw(self, operands):
         result = self.zm.read_word(operands[0] + operands[1] * 2)
         self.store_result(result)
 
-    #def op_loadb(self, operands): pass
     def op_loadb(self, operands):
         result = self.zm.read_byte(operands[0] + operands[1])
         #print(f"debug: reading loadb from 0x{operands[0]+operands[1]:04x}: 0x{result:02x}")
