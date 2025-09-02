@@ -165,7 +165,7 @@ class ZProcessor:
     def fetch_instruction(self):
         """Fetch and decode the next instruction"""
         debug_count = 999999
-        #debug_count = 385
+        #debug_count = 0 # use this to enable debugging at start
         if self.instruction_count >= debug_count:
             self.zm.debug = 2 # turn on debugging output
         pccount = self.zm.pc
@@ -176,8 +176,6 @@ class ZProcessor:
         self.zm.pc += 1
         self.zm.print_debug(3,f"opcode_byte: 0x{opcode_byte:02x}")
 
-        # new method
-        #"""
         # Determine instruction form
         if opcode_byte >= 0xC0:
             # Variable form: VAR
@@ -310,11 +308,9 @@ class ZProcessor:
             # Stack variable
             self.zm.call_stack[-1].data_stack.append(value)
             self.zm.print_debug(3,f"write data stack value {value}")
-            self.zm.print_debug(1,f"data stack({len(self.zm.call_stack[-1].data_stack)}): {self.zm.call_stack[-1].data_stack}")
+            self.zm.print_debug(3,f"data stack({len(self.zm.call_stack[-1].data_stack)}): {self.zm.call_stack[-1].data_stack}")
         elif var_num <= 15:
             # Local variable
-            if value > 0 and (value & 0x8000) != 0:
-                value = value - 0x10000 # make negative
             f = self.zm.call_stack[-1]
             if hasattr(f,"local_vars"):
                 f.local_vars[var_num -1 ] = value
@@ -327,19 +323,20 @@ class ZProcessor:
             self.zm.write_word(addr, value)
             self.zm.print_debug(3,f"write global var {global_index} to 0x{addr:04x}: {value}")
 
+    def init_frame(self):
+        f = Frame()
+        f.return_pointer = self.zm.read_word(0x06)  # Initial PC
+        #print("debug: ptr: ", f.return_pointer)
+        #print(f"debug 2: 0x{self.zm.memory[0x06]:02x}")
+        self.zm.call_stack.append(f)
+        #print(f"debug: initial frame {len(self.zm.call_stack)}:")
+        #self.print_frame(f,0)
+
     def execute_instruction(self):
         """Execute one Z-machine instruction"""
 
         try:
             opcode, operands, form, pccount, opcode_byte = self.fetch_instruction()
-            if self.instruction_count == 0: # create initial frame the first time
-                f = Frame()
-                f.return_pointer = self.zm.read_word(0x06)  # Initial PC
-                #print("debug: ptr: ", f.return_pointer)
-                #print(f"debug 2: 0x{self.zm.memory[0x06]:02x}")
-                self.zm.call_stack.append(f)
-                #print(f"debug: initial frame {len(self.zm.call_stack)}:")
-                self.print_frame(f,0)
             self.instruction_count += 1
             maxcount = 3000
             if self.instruction_count > maxcount:

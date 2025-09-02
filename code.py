@@ -583,6 +583,7 @@ class ZMachine:
     def execute_game(self):
         """Execute Z-machine instructions"""
         try:
+            self.processor.init_frame()
             while self.game_running and self.pc < len(self.memory):
                 # Execute one instruction
                 if self.processor:
