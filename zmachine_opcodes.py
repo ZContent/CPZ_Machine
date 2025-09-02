@@ -670,11 +670,17 @@ class ZProcessor:
                 if word_index > (self.zm.dictionary_size -1):
                     word_index = self.zm.dictionary_size -1
                 offset = self.zm.dictionary_offset + ( word_index * entry_size )
-                #print(f"debug: index: {word_index}/{chop} compare: 0x{buff[0]:04x} with 0x{self.zm.read_word(offset + 0):04x}, offset: {offset}")
+                self.zm.print_debug(3,f"index: {word_index}/{chop} compare: 0x{buff[0]:04x} with 0x{self.zm.read_word(offset + 0):04x}, offset: {offset}")
                 status1 = buff[0] - self.zm.read_word(offset + 0)
                 status2 = buff[1] - self.zm.read_word(offset + 2)
                 status3 = buff[2] - self.zm.read_word(offset + 4)
-                status = status1
+                #status = status1
+                status = (status1 == 0)
+                status = (status2 == 0)
+                if htype < 4:
+                    status = True
+                else:
+                    status = (status3 == 0)
                 # if word matches then return dictionary offset
                 if status1 == 0 and status2 == 0 and (h_type < 4 or status3 == 0):
                     self.zm.print_debug(3,f"'{token}' found at offset {offset} (binary search)")
