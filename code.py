@@ -451,7 +451,7 @@ class ZMachine:
             #return input()
             return self.keyboard_handler.get_input_line()
         else:
-            print("> ", end="")
+            #print("> ", end="")
             return input().strip().lower()
 
     def save_game(self, save_name="quicksave"):

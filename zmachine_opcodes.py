@@ -797,7 +797,9 @@ class ZProcessor:
 
             # Refresh status line
             if h_type < 4:
-                self.show_status()
+                pass
+                # not yet, waiting on curses
+                #self.show_status()
 
             # Reset line count
             self.zm.lines_written = 0
@@ -873,10 +875,10 @@ class ZProcessor:
 
     def write_zchar(self, c):
         c = c & 0xff
-        if " " <= c and c <= "~":
-            print(c)
+        if ord(" ") <= c and c <= ord("~"):
+            self.zm.print_text(chr(c))
         elif c == 13:
-            print("\r")
+            self.zm.print_text("\r")
         # don't care about other characters at this time
 
     def encode_string(self, len, s):
@@ -1014,19 +1016,19 @@ class ZProcessor:
         synonym = 0
         while addr < len(self.zm.memory):
             word = self.zm.read_word(addr)
-            self.zm.print_debug(3,f"debug: read word 0x{word:04x} at address 0x{addr:04x}")
+            self.zm.print_debug(3,f"read word 0x{word:04x} at address 0x{addr:04x}")
             addr += 2
-            zscii_flag = 0
 
             # Extract 5-bit characters
             for shift in [10, 5, 0]:
                 char_code = (word >> shift) & 0x1F
+                self.zm.print_debug(3,f"code:0x{char_code:02x} syn:{synonym_flag} zscii:{zscii_flag} xscii:{zscii:02x}")
                 if synonym_flag:
                     synonym_flag = 0
                     synonym = ( synonym - 1 ) * 64
                     saddr = self.zm.read_word( self.zm.synonyms_offset + synonym + ( char_code * 2 ) ) * 2
                     syntext = self.decode_string( saddr )
-                    self.zm.print_debug(3,f"debug: synonym at 0x{saddr:04x} is '{syntext}'")
+                    self.zm.print_debug(3,f"synonym at 0x{saddr:04x} is '{syntext}'")
                     text += syntext
                     shift_state = shift_lock
                 elif zscii_flag:
@@ -1046,8 +1048,8 @@ class ZProcessor:
                         character from the two codes and output it.
                         """
                         zscii_flag = 0
-                        self.zm.print_debug(3,f"write_char: 0x{zscii|charcode:02x} ({chr(zscii|charcode)}")
-                        self.write_zchar( zscii | char_code)
+                        self.zm.print_debug(3,f"write_char: 0x{int(zscii)|char_code:02x} ({chr(int(zscii)|char_code)})")
+                        self.write_zchar( int(zscii) | int(char_code))
                 elif char_code > 5:
                     char_code -= 6
                     if shift_state == 2 and char_code == 0:

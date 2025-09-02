@@ -20,6 +20,7 @@ class ZKeyboardHandler:
         self.history_index = -1
         self.cursor_pos = 0
         self.prompt = "> "
+        self.prompt = "" # use prompt from Z machine
         self.max_input_length = 80
 
         # Key mapping for special characters
