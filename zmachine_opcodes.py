@@ -1353,13 +1353,35 @@ class ZProcessor:
             # No property found, just return 0
             self.store_result(0)
 
+    """
+    Load the property after the current property. If the current property is zero
+    then load the first property.
+    """
     def op_get_next_prop(self, operands):
+        obj = operands[0]
+        prop = operands[1]
+        # load address of first property
+        prop_addr = self.get_property_addr(obj)
 
-        """
+        # if the property id is non-zero then find the next property
+        if prop != 0:
+            # Scan down the property list while the target property id is less
+            # than the property id in the list */
+            while True:
+                value = self.zm.read_byte( prop_addr )
+                prop_addr = self.get_next_prop( prop_addr );
+                condition = ( value & property_mask ) > prop
+                if not condition:
+                    break
 
-        """
-        print("op_get_next_prop() not yet supported")
-        sys.exit()
+            # If the property id wasn't found then complain
+            if ( value & property_mask ) !=  prop:
+                self.zm.print_error("load_next_property(): No such property")
+                sys.exit()
+
+        #cReturn the next property id
+        value = self.zm.read_byte( prop_addr )
+        self.store_result( ( value & property_mask ) )
 
     def op_mul(self, operands):
         """multiply 2 numbers"""
