@@ -44,7 +44,7 @@ from keyboard_handler import ZKeyboardHandler
 
 # Z-Machine constants
 SUPPORTED_VERSIONS = [3, 5, 8]
-SAVE_DIR = "/saves"
+SAVE_DIR = "//cpsaves/cpz"
 STORY_DIR = "/stories"
 MAX_STORY_SIZE = 1024 * 1024  # 1MB max story size (plenty of PSRAM available)
 

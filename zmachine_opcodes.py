@@ -1605,10 +1605,10 @@ class ZProcessor:
         sys.exit()
 
     def op_save(self, operands):
-        print("op_save() not yet supported")
-        sys.exit()
+        # future work: allow filename choice
+        self.zm.save_game()
 
     def op_restore(self, operands):
-        print("op_restore() not yet supported")
-        sys.exit()
+        # future work: allow filename choice
+        self.zm.restore_game()
 
