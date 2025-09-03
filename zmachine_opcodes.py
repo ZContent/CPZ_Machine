@@ -1606,9 +1606,9 @@ class ZProcessor:
 
     def op_save(self, operands):
         # future work: allow filename choice
-        self.zm.save_game()
+        self.store_result(self.zm.save_game())
 
     def op_restore(self, operands):
         # future work: allow filename choice
-        self.zm.restore_game()
+        self.store_result(self.zm.restore_game())
 
