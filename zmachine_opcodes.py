@@ -674,16 +674,20 @@ class ZProcessor:
                 status1 = buff[0] - self.zm.read_word(offset + 0)
                 status2 = buff[1] - self.zm.read_word(offset + 2)
                 status3 = buff[2] - self.zm.read_word(offset + 4)
+                status = status1
+                #self.zm.print_debug(0,f"status1:{status1==0} status2:{status2==0} status3:{status3==0}")
+                #self.zm.print_debug(0,f"buff[0]:{buff[0]:04x} offset+0:{self.zm.read_word(offset+0):04x}")
+                #self.zm.print_debug(0,f"buff[1]:{buff[1]:04x} offset+2:{self.zm.read_word(offset+2):04x}")
+                #self.zm.print_debug(0,f"buff[2]:{buff[2]:04x} offset+4:{self.zm.read_word(offset+4):04x}")
                 #status = status1
-                status = (status1 == 0)
-                status = (status2 == 0)
-                if htype < 4:
-                    status = True
-                else:
-                    status = (status3 == 0)
+                #status = (status2 == 0)
+                #if h_type < 4:
+                #    status = True
+                #else:
+                #    status = (status3 == 0)
                 # if word matches then return dictionary offset
-                if status1 == 0 and status2 == 0 and (h_type < 4 or status3 == 0):
-                    self.zm.print_debug(3,f"'{token}' found at offset {offset} (binary search)")
+                if status1 == 0 : #and status2 == 0 and (h_type < 4 or status3 == 0):
+                    self.zm.print_debug(3,f"'{token}' found at offset 0x{offset:04x} (binary search)")
                     return offset
                 if status > 0:
                     word_index += chop
@@ -706,7 +710,7 @@ class ZProcessor:
                 status2 = buff[1] - self.zm.read_word(offset + 2)
                 status3 = buff[2] - self.zm.read_word(offset + 4)
                 if status1 == 0 and status2 == 0 and (h_type < 4 or status3 == 0):
-                    self.zm.print_debug(3,f"'{token}' found at offset {offset} (linear search)")
+                    self.zm.print_debug(3,f"'{token}' found at offset 0x{offset:04x} (linear search)")
                     return offset
 
         self.zm.print_debug(3,f"'{token}' not found")
@@ -987,17 +991,23 @@ class ZProcessor:
             """
             if table == 2 and code == 0:
                 if codes_count < 9:
-                    codes[codes_count] = s[pos] >> 5 & 0x07
+                    codes[codes_count] = (s[pos] >> 5) & 0x07
                     codes_count += 1
                 if codes_count < 9:
                     codes[codes_count] = s[pos] & 0x1f
+                    codes_count += 1
             # Advance to next character
             pos += 1
 
         # Pad out codes with shift 5's
-        for i in range(codes_count,9):
-            codes[i] = 5
-        #print("debug:",codes)
+        #for i in range(codes_count,9):
+        #    codes[i] = 5
+
+        while True:
+            codes[codes_count] = 5
+            codes_count += 1
+            if codes_count >= 9:
+                break;
         # Pack codes into buffer
         buffer[0] = codes[0] << 10 | codes[1] << 5 | codes[2]
         buffer[1] = codes[3] << 10 | codes[4] << 5 | codes[5]
@@ -1008,6 +1018,7 @@ class ZProcessor:
             buffer[1] |= 0x8000
         else:
             buffer[2] |= 0x8000
+        self.zm.print_debug(3,f"encode_string:'{s}' to {buffer}")
         return buffer
 
     def decode_string(self, addr):
