@@ -659,6 +659,17 @@ class ZProcessor:
         # Encode target word */
         buff = self.encode_string( len(token), token);
 
+        # create mask for first 6 letters for comparison
+        mask = []*3
+        for j in range(3):
+            mask[j] = 0x8000 # presever end string bit
+            for i in (10, 5, 0):
+                test = (buff[j]>>i) &0x1f
+                if test != 0x1010:
+                    mask[j] |= 0x1f << i
+                else:
+                    break # exit inner loop
+
         """
         Do a binary chop search on the main dictionary, otherwise do
         a linear search
@@ -673,10 +684,12 @@ class ZProcessor:
                     word_index = self.zm.dictionary_size -1
                 offset = self.zm.dictionary_offset + ( word_index * entry_size )
                 self.zm.print_debug(3,f"index: {word_index}/{chop} compare: 0x{buff[0]:04x} with 0x{self.zm.read_word(offset + 0):04x}, offset: {offset}")
-                status1 = buff[0] - self.zm.read_word(offset + 0)
-                status2 = buff[1] - self.zm.read_word(offset + 2)
-                status3 = buff[2] - self.zm.read_word(offset + 4)
-                status = status1
+                status1 = (buff[0] & mask[0]) - (self.zm.read_word(offset+0) & mask[0]) 
+                status2 = (buff[1] & mask[1]) - (self.zm.read_word(offset+2) & mask[1])
+                #status1 = buff[0] - self.zm.read_word(offset + 0)
+                #status2 = buff[1] - self.zm.read_word(offset + 2)
+                #status3 = buff[2] - self.zm.read_word(offset + 4)
+                #status = status1
                 #self.zm.print_debug(0,f"status1:{status1==0} status2:{status2==0} status3:{status3==0}")
                 #self.zm.print_debug(0,f"buff[0]:{buff[0]:04x} offset+0:{self.zm.read_word(offset+0):04x}")
                 #self.zm.print_debug(0,f"buff[1]:{buff[1]:04x} offset+2:{self.zm.read_word(offset+2):04x}")
@@ -688,10 +701,10 @@ class ZProcessor:
                 #else:
                 #    status = (status3 == 0)
                 # if word matches then return dictionary offset
-                if status1 == 0 : #and status2 == 0 and (h_type < 4 or status3 == 0):
+                if status1 == 0 and status2 == 0: #  and (h_type < 4 or status3 == 0):
                     self.zm.print_debug(3,f"'{token}' found at offset 0x{offset:04x} (binary search)")
                     return offset
-                if status > 0:
+                if status1 > 0 or (status1 == 0 and status2 > 0):
                     word_index += chop
 
                     # deal with end of dictionary case
