@@ -103,6 +103,7 @@ class ZProcessor:
             0x33: [self.op_print_ret,"op_print_ret"],  # print_ret
             0x35: [self.op_save,"op_save"], # save
             0x36: [self.op_restore,"op_restore"], # restore
+            0x37: [self.op_restart,"op_restart"], # restart
             0x38: [self.op_ret_popped,"op_ret_popped"], # ret_popped
             0x39: [self.op_catch,"op_catch"],      # catch
             0x3A: [self.op_quit,"op_quit"],       # quit
@@ -1619,9 +1620,12 @@ class ZProcessor:
 
     def op_save(self, operands):
         # future work: allow filename choice
-        self.zm.save_game()
+        self.store_result(self.zm.save_game())
 
     def op_restore(self, operands):
         # future work: allow filename choice
-        self.zm.restore_game()
+        self.store_result(self.zm.restore_game())
 
+    def op_restart(self, operands):
+        print("op_restart() not yet supported")
+        sys.exit()

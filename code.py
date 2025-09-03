@@ -44,7 +44,8 @@ from keyboard_handler import ZKeyboardHandler
 
 # Z-Machine constants
 SUPPORTED_VERSIONS = [3, 5, 8]
-SAVE_DIR = "//cpsaves/cpz"
+SAVE_DIR = "/saves/cpz"
+#SAVE_DIR = "//saves/cpz"
 STORY_DIR = "/stories"
 MAX_STORY_SIZE = 1024 * 1024  # 1MB max story size (plenty of PSRAM available)
 
@@ -109,6 +110,7 @@ class ZMachine:
 
     def __init__(self):
         self.debug = 0 # debug level, 0 = no debugging output
+        self.filename = ""
         self.DATA_SIZE = 1024*20
         self.STACK_SIZE = 1024
         self.story_data = None
@@ -285,6 +287,7 @@ class ZMachine:
             self.print_text(f"Loaded {filename} (Z{self.z_version})\n")
             self.print_text(f"Story size: {len(self.story_data)} bytes\n")
             self.print_text("\n")
+            self.filename = filename
             return True
 
         except Exception as e:
@@ -454,12 +457,19 @@ class ZMachine:
             #print("> ", end="")
             return input().strip().lower()
 
-    def save_game(self, save_name="quicksave"):
+    def save_game(self, save_name=""):
         """Save game state"""
+        fn = self.filename.split(".")[0].lower()
+        if(len(save_name) > 0):
+            fn += "." + save_name
+        save_name = fn
         try:
-            os.mkdir(SAVE_DIR)
             save_path = f"{SAVE_DIR}/{save_name}.sav"
-
+            self.print_debug(3,f"save path:{save_path}")
+            os.mkdir(SAVE_DIR)
+        except Exception as e:
+            pass #existing folder?
+        try:
             save_data = {
                 'memory': bytes(self.memory[:self.variables_addr + 480]),  # Dynamic memory only
                 'pc': self.pc,
@@ -469,12 +479,12 @@ class ZMachine:
             }
 
             # Simple binary format save (could be improved)
+            os.remove(save_path)
             with open(save_path, 'wb') as f:
                 # Write header
                 f.write(b'ZSAV')  # Magic number
                 f.write(bytes([self.z_version]))
                 f.write(self.pc.to_bytes(2, 'big'))
-
                 # Write memory
                 f.write(len(save_data['memory']).to_bytes(2, 'big'))
                 f.write(save_data['memory'])
@@ -482,7 +492,9 @@ class ZMachine:
                 # Write stack (simplified)
                 f.write(len(self.call_stack).to_bytes(1, 'big'))
                 for frame in self.call_stack:
-                    f.write(frame.to_bytes(2, 'big'))
+                    pass
+                    #f.write(bytes(frame))
+                    #f.write(frame) # .to_bytes(2, 'big'))
 
             self.print_text(f"Game saved as {save_name}\n")
             return True
@@ -491,8 +503,12 @@ class ZMachine:
             self.print_error(f"Save failed: {e}")
             return False
 
-    def restore_game(self, save_name="quicksave"):
+    def restore_game(self, save_name=""):
         """Restore game state"""
+        fn = self.filename.split(".")[0].lower()
+        if(len(save_name) > 0):
+            save_name += "." + save_name
+        save_name = fn
         try:
             save_path = f"{SAVE_DIR}/{save_name}.sav"
             if not os.path.exists(save_path):
