@@ -101,6 +101,8 @@ class ZProcessor:
             0x31: [self.op_rfalse,"op_rfalse"],     # rfalse
             0x32: [self.op_print,"op_print"],      # print
             0x33: [self.op_print_ret,"op_print_ret"],  # print_ret
+            0x35: [self.op_save,"op_save"], # save
+            0x36: [self.op_restore,"op_restore"], # restore
             0x38: [self.op_ret_popped,"op_ret_popped"], # ret_popped
             0x39: [self.op_catch,"op_catch"],      # catch
             0x3A: [self.op_quit,"op_quit"],       # quit
@@ -1601,3 +1603,12 @@ class ZProcessor:
     def op_call_2s(self, operands):
         print("op_call_2s() not yet supported")
         sys.exit()
+
+    def op_save(self, operands):
+        print("op_save() not yet supported")
+        sys.exit()
+
+    def op_restore(self, operands):
+        print("op_restore() not yet supported")
+        sys.exit()
+
