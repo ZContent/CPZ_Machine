@@ -31,6 +31,7 @@ import os
 import gc
 import time
 import usb_hid
+
 from adafruit_display_text import label
 from adafruit_display_shapes.rect import Rect
 from adafruit_hid.keyboard import Keyboard
@@ -39,7 +40,7 @@ import supervisor
 import storage
 
 # Import our custom modules
-from zmachine_opcodes import ZProcessor
+from zmachine_opcodes import ZProcessor, Frame
 from keyboard_handler import ZKeyboardHandler
 
 # Z-Machine constants
@@ -457,6 +458,14 @@ class ZMachine:
             #print("> ", end="")
             return input().strip().lower()
 
+    def does_file_exist(self, filename):
+        try:
+            status = os.stat(filename)
+            file_exists = True
+        except OSError:
+            file_exists = False
+        return file_exists
+
     def save_game(self, save_name=""):
         """Save game state"""
         fn = self.filename.split(".")[0].lower()
@@ -486,15 +495,20 @@ class ZMachine:
                 f.write(bytes([self.z_version]))
                 f.write(self.pc.to_bytes(2, 'big'))
                 # Write memory
-                f.write(len(save_data['memory']).to_bytes(2, 'big'))
-                f.write(save_data['memory'])
+                globals = bytes(self.memory[self.variables_addr:self.variables_addr + 480])
+                print(f"globals len: {len(globals)}")
+                print(f"pc: {self.pc}")
+                f.write(len(globals).to_bytes(2, 'big'))
+                f.write(globals)
+                #f.write(len(save_data['memory']).to_bytes(2, 'big'))
+                #f.write(save_data['memory'])
 
-                # Write stack (simplified)
                 f.write(len(self.call_stack).to_bytes(1, 'big'))
                 for frame in self.call_stack:
-                    pass
-                    #f.write(bytes(frame))
-                    #f.write(frame) # .to_bytes(2, 'big'))
+                    data = frame.serialize(3)
+                    f.write(len(data).to_bytes(2, 'big'))
+                    f.write(data)
+
 
             self.print_text(f"Game saved as {save_name}\n")
             return True
@@ -507,37 +521,42 @@ class ZMachine:
         """Restore game state"""
         fn = self.filename.split(".")[0].lower()
         if(len(save_name) > 0):
-            save_name += "." + save_name
+            fn += "." + save_name
         save_name = fn
         try:
             save_path = f"{SAVE_DIR}/{save_name}.sav"
-            if not os.path.exists(save_path):
+            print(f"save path: {save_path}")
+            if not self.does_file_exist(save_path):
                 raise FileNotFoundError(f"Save file not found: {save_name}")
-
             with open(save_path, 'rb') as f:
                 # Read header
                 magic = f.read(4)
                 if magic != b'ZSAV':
                     raise ValueError("Invalid save file")
-
                 version = f.read(1)[0]
                 if version != self.z_version:
                     raise ValueError("Save file version mismatch")
-
                 self.pc = int.from_bytes(f.read(2), 'big')
+                print(f"pc: {self.pc}")
+
 
                 # Read memory
                 mem_size = int.from_bytes(f.read(2), 'big')
                 mem_data = f.read(mem_size)
-                self.memory[:len(mem_data)] = mem_data
-
-                # Read stack
-                stack_size = f.read(1)[0]
+                self.memory[self.variables_addr:self.variables_addr + 480] = mem_data
+                print(f"globals len:{mem_size}")
+                # Read call stack
+                stack_size = int.from_bytes(f.read(1))
+                print("stack size:",stack_size)
                 self.call_stack = []
                 for _ in range(stack_size):
-                    frame = int.from_bytes(f.read(2), 'big')
+                    frame_size = int.from_bytes(f.read(2), 'big')
+                    print(f"frame size is {frame_size}")
+                    mem = f.read(frame_size)
+                    frame = Frame()
+                    frame.unserialize(mem,3)
+                    frame.print()
                     self.call_stack.append(frame)
-
             self.print_text(f"Game restored from {save_name}\n")
             return True
 

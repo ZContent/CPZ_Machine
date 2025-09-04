@@ -82,13 +82,65 @@ else:
 class Frame:
     def __init__(self):
         self.return_pointer = 0 # Program counter
-        self.variable = 0 # Stack variable
-        self.result_var = 0
         self.ctype = FUNCTION
-        self.arg_count = 0 # for +V5 versions
-        self.count = 0
         self.local_vars = [0]*15
         self.data_stack = []
+
+    def unserialize(self, data, debug = 0):
+        if debug >= 3:
+            for i in range(len(data)):
+                if i%16 == 0:
+                    print()
+                print(f"0x{data[i]:02x}",end=" ")
+            print()
+        self.return_pointer = int.from_bytes(data[0:3],"big")
+        print(f"return pointer: 0x{self.return_pointer:04x}")
+        self.ctype = int(data[4])
+        for i in range(15):
+            self.local_vars[i] = int.from_bytes(data[5+i*2:5+i*2+1],"big")
+        #print("local vars:",self.local_vars)
+        stacklen = int.from_bytes(data[36:37],"big")
+        print("stacklen:",stacklen)
+        print("data size:",len(data))
+        for i in range(stacklen):
+            self.data_stack.append(int.from_bytes(data[38+i*2:38+i*2+1],"big"))
+
+    def serialize(self, debug = 0):
+        size = (4  # return_pointer
+            + 1 # ctype
+            + 15*2 # local_vars
+            + 2 # data_stack len
+            + len(self.data_stack)*2 # data_stack
+            )
+        if debug >= 3:
+            print(f"frame size is {size}, stack size is {len(self.data_stack)}")
+        data = bytearray()
+        data[0:3] = self.return_pointer.to_bytes(4, 'big')
+
+        data[4:4] = self.ctype.to_bytes(1)
+        for i in range(15):
+            data[5+i*2:5+i*2+1] = int(self.local_vars[i]).to_bytes(2, 'big')
+        data[36:37] = len(self.data_stack).to_bytes(2, 'big')
+        print(f"len: {len(self.data_stack)}, {self.data_stack}")
+        for i in range(len(self.data_stack)):
+            data[38+i*2:38+i*2+1] = self.data_stack[i].to_bytes(2, 'big')
+        if debug >= 3:
+            i = 0
+            for byte_value in data:
+                print(f"0x{byte_value:02x}", end=" ")
+                i += 1
+                if i % 16 == 0:
+                    print()
+            print()
+        return data
+
+    def print(self, debug = "3"):
+        if debug == 3:
+            print(f"## frame {i} ##")
+            print(f"# return_pointer: 0x{self.return_pointer:02X}")
+            print(f"# local_vars: {self.local_vars}")
+            print(f"# data stack: {self.data_stack}")
+            print("## end ##")
 
 class ZProcessor:
     def __init__(self, zmachine):
@@ -254,12 +306,8 @@ class ZProcessor:
         return types
 
     def print_frame(self, frame, i = "0"):
-        pass
         self.zm.print_debug(3,f"## frame {i} ##")
         self.zm.print_debug(3,f"# return_pointer: 0x{frame.return_pointer:02X}")
-        self.zm.print_debug(3,f"# result_var: {frame.result_var}")
-        self.zm.print_debug(3,f"# variable: {frame.variable}")
-        self.zm.print_debug(3,f"# local var count: {frame.count}")
         self.zm.print_debug(3,f"# local_vars: {frame.local_vars}")
         self.zm.print_debug(3,f"# data stack: {frame.data_stack}")
         self.zm.print_debug(3,"## end ##")
@@ -649,6 +697,7 @@ class ZProcessor:
     def find_word(self,token, chop, entry_size ):
         self.zm.print_debug(3,f"find_word() {token}")
         buff = []*3
+        mask = [0]*3
         word_index = 0
         offset = 0
         status = 0
@@ -661,16 +710,14 @@ class ZProcessor:
         buff = self.encode_string( len(token), token);
 
         # create mask for first 6 letters for comparison
-        mask = []*3
         for j in range(3):
             mask[j] = 0x8000 # presever end string bit
-            for i in (10, 5, 0):
+            for i in [10, 5, 0]:
                 test = (buff[j]>>i) &0x1f
                 if test != 0x1010:
                     mask[j] |= 0x1f << i
                 else:
                     break # exit inner loop
-
         """
         Do a binary chop search on the main dictionary, otherwise do
         a linear search
@@ -685,7 +732,7 @@ class ZProcessor:
                     word_index = self.zm.dictionary_size -1
                 offset = self.zm.dictionary_offset + ( word_index * entry_size )
                 self.zm.print_debug(3,f"index: {word_index}/{chop} compare: 0x{buff[0]:04x} with 0x{self.zm.read_word(offset + 0):04x}, offset: {offset}")
-                status1 = (buff[0] & mask[0]) - (self.zm.read_word(offset+0) & mask[0]) 
+                status1 = (buff[0] & mask[0]) - (self.zm.read_word(offset+0) & mask[0])
                 status2 = (buff[1] & mask[1]) - (self.zm.read_word(offset+2) & mask[1])
                 #status1 = buff[0] - self.zm.read_word(offset + 0)
                 #status2 = buff[1] - self.zm.read_word(offset + 2)
@@ -1480,9 +1527,6 @@ class ZProcessor:
             #Read argument count and initialise local variables
             args = self.zm.read_byte(self.zm.pc)
             self.zm.pc += 1
-            f.arg_count = argc - 1
-            #f.stack = []
-            f.count = argc
             f.local_vars = [0] * 15
             i = 1
             argc = argc - 1 # don't include first operand
