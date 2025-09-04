@@ -93,13 +93,13 @@ class Frame:
                     print()
                 print(f"0x{data[i]:02x}",end=" ")
             print()
-        self.return_pointer = int.from_bytes(data[0:4],"big")
+        self.return_pointer = int.from_bytes(data[0:3],"big")
         print(f"return pointer: 0x{self.return_pointer:04x}")
         self.ctype = int(data[4])
         for i in range(15):
             self.local_vars[i] = int.from_bytes(data[5+i*2:5+i*2+1],"big")
         #print("local vars:",self.local_vars)
-        stacklen = int.from_bytes(data[36:38],"big")
+        stacklen = int.from_bytes(data[36:37],"big")
         print("stacklen:",stacklen)
         print("data size:",len(data))
         for i in range(stacklen):
@@ -115,12 +115,12 @@ class Frame:
         if debug >= 3:
             print(f"frame size is {size}, stack size is {len(self.data_stack)}")
         data = bytearray()
-        data[0:4] = self.return_pointer.to_bytes(4, 'big')
+        data[0:3] = self.return_pointer.to_bytes(4, 'big')
 
-        data[4] = self.ctype.to_bytes(1)
+        data[4:4] = self.ctype.to_bytes(1)
         for i in range(15):
             data[5+i*2:5+i*2+1] = int(self.local_vars[i]).to_bytes(2, 'big')
-        data[36:38] = len(self.data_stack).to_bytes(2, 'big')
+        data[36:37] = len(self.data_stack).to_bytes(2, 'big')
         print(f"len: {len(self.data_stack)}, {self.data_stack}")
         for i in range(len(self.data_stack)):
             data[38+i*2:38+i*2+1] = self.data_stack[i].to_bytes(2, 'big')
@@ -134,11 +134,12 @@ class Frame:
             print()
         return data
 
-    def print(self, debug = "3"):
-        if debug == 3:
-            print(f"## frame {i} ##")
-            print(f"# return_pointer: 0x{self.return_pointer:02X}")
+    def print(self, debug = 0):
+        if debug >= 3:
+            print(f"## frame ##")
+            print(f"# return_pointer: 0x{self.return_pointer:02x}")
             print(f"# local_vars: {self.local_vars}")
+            #if len(self.data_stack) > 0:
             print(f"# data stack: {self.data_stack}")
             print("## end ##")
 

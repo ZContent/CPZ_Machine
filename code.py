@@ -492,19 +492,21 @@ class ZMachine:
             with open(save_path, 'wb') as f:
                 # Write header
                 f.write(b'ZSAV')  # Magic number
-                f.write(bytes([self.z_version]))
-                f.write(self.pc.to_bytes(2, 'big'))
+                f.write(self.z_version.to_bytes(1))
+                f.write((self.pc).to_bytes(2, 'big'))
                 # Write memory
                 globals = bytes(self.memory[self.variables_addr:self.variables_addr + 480])
                 print(f"globals len: {len(globals)}")
-                print(f"pc: {self.pc}")
+                print(f"pc: 0x{self.pc:04x}")
                 f.write(len(globals).to_bytes(2, 'big'))
                 f.write(globals)
                 #f.write(len(save_data['memory']).to_bytes(2, 'big'))
                 #f.write(save_data['memory'])
 
                 f.write(len(self.call_stack).to_bytes(1, 'big'))
-                for frame in self.call_stack:
+                for i in range(len(self.call_stack)):
+                    frame = self.call_stack[i]
+                    frame.print(3)
                     data = frame.serialize(3)
                     f.write(len(data).to_bytes(2, 'big'))
                     f.write(data)
@@ -537,8 +539,7 @@ class ZMachine:
                 if version != self.z_version:
                     raise ValueError("Save file version mismatch")
                 self.pc = int.from_bytes(f.read(2), 'big')
-                print(f"pc: {self.pc}")
-
+                print(f"pc: 0x{self.pc:04x}")
 
                 # Read memory
                 mem_size = int.from_bytes(f.read(2), 'big')
@@ -549,13 +550,14 @@ class ZMachine:
                 stack_size = int.from_bytes(f.read(1))
                 print("stack size:",stack_size)
                 self.call_stack = []
-                for _ in range(stack_size):
+                for i in range(len(self.call_stack)):
+                    frame.print(3)
                     frame_size = int.from_bytes(f.read(2), 'big')
                     print(f"frame size is {frame_size}")
                     mem = f.read(frame_size)
                     frame = Frame()
                     frame.unserialize(mem,3)
-                    frame.print()
+                    frame.print(3)
                     self.call_stack.append(frame)
             self.print_text(f"Game restored from {save_name}\n")
             return True
