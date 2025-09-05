@@ -539,7 +539,7 @@ class ZMachine:
                 #print(f"globals len:{mem_size}")
                 # Read call stack
                 stack_size = int.from_bytes(f.read(1))
-                #print("stack size:",stack_size)
+                print("stack size:",stack_size)
                 self.call_stack = []
                 for i in range(stack_size):
                     frame_size = int.from_bytes(f.read(2), 'big')
