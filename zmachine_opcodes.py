@@ -93,19 +93,19 @@ class Frame:
                     print()
                 print(f"0x{data[i]:02x}",end=" ")
             print()
-        self.return_pointer = int.from_bytes(data[0:3],"big")
+        self.return_pointer = int.from_bytes(data[0:4],"big")
         print(f"return pointer: 0x{self.return_pointer:04x}")
         self.ctype = int(data[4])
         for i in range(15):
             self.local_vars[i] = int.from_bytes(data[5+i*2:5+i*2+1],"big")
         #print("local vars:",self.local_vars)
-        stacklen = int.from_bytes(data[36:37],"big")
+        stacklen = int.from_bytes(data[36:38],"big")
         print("stacklen:",stacklen)
         print("data size:",len(data))
         for i in range(stacklen):
             self.data_stack.append(int.from_bytes(data[38+i*2:38+i*2+1],"big"))
 
-    def serialize(self, debug = 0):
+    def serialize(self, debug = 3):
         size = (4  # return_pointer
             + 1 # ctype
             + 15*2 # local_vars
@@ -115,13 +115,12 @@ class Frame:
         if debug >= 3:
             print(f"frame size is {size}, stack size is {len(self.data_stack)}")
         data = bytearray()
-        data[0:3] = self.return_pointer.to_bytes(4, 'big')
-
-        data[4:4] = self.ctype.to_bytes(1)
+        data[0:4] = self.return_pointer.to_bytes(4, 'big')
+        data[4] = self.ctype.to_bytes(1)
         for i in range(15):
             data[5+i*2:5+i*2+1] = int(self.local_vars[i]).to_bytes(2, 'big')
-        data[36:37] = len(self.data_stack).to_bytes(2, 'big')
-        print(f"len: {len(self.data_stack)}, {self.data_stack}")
+        data[36:38] = len(self.data_stack).to_bytes(2, 'big')
+        #print(f"len: {len(self.data_stack)}, {self.data_stack}")
         for i in range(len(self.data_stack)):
             data[38+i*2:38+i*2+1] = self.data_stack[i].to_bytes(2, 'big')
         if debug >= 3:
@@ -1169,7 +1168,7 @@ class ZProcessor:
     # Placeholder implementations for other opcodes
     #def op_catch(self, operands): pass
     def op_catch(self, operands):
-        print("op_catch() not yet supported")
+        print_line("op_catch() not yet supported")
         sys.exit()
 
     def op_get_sibling(self, operands):
@@ -1660,19 +1659,35 @@ class ZProcessor:
         self.zm.print_text(text)
 
     def op_call_2s(self, operands):
-        print("op_call_2s() not yet supported")
+        print_line("op_call_2s() not yet supported")
         sys.exit()
 
     def op_save(self, operands):
         # future work: allow filename choice
         #self.store_result(self.zm.save_game())
-        result = self.zm.save_game()
+        #for i in range(len(self.zm.call_stack)):
+        #    self.zm.call_stack[i].print(3)
+        value = self.zm.save_game()
+        self.zm.print_debug(0,f"pc: 0x{self.zm.pc:04x}")
+        frame = self.zm.call_stack[-1]
+        self.zm.print_debug(0,f"# return_pointer: 0x{frame.return_pointer:02X}")
+        self.zm.print_debug(0,f"# local_vars: {frame.local_vars}")
+        self.zm.print_debug(0,f"# data stack: {frame.data_stack}")
+        self.return_from_routine(value)
 
     def op_restore(self, operands):
+        print("op_restore()")
         # future work: allow filename choice
-        #self.store_result(self.zm.restore_game())
-        result = self.zm.restore_game()
+        #self.return_from_routine(self.zm.restore_game())
+        self.zm.print_debug(0,f"before pc: 0x{self.zm.pc:04x}")
+        self.zm.restore_game()
+        self.zm.print_debug(0,f"after pc: 0x{self.zm.pc:04x}")
+
+        frame = self.zm.call_stack[-1]
+        self.zm.print_debug(0,f"# return_pointer: 0x{frame.return_pointer:02X}")
+        self.zm.print_debug(0,f"# local_vars: {frame.local_vars}")
+        #self.zm.print_debug(0,f"# data stack: {frame.data_stack}")
 
     def op_restart(self, operands):
-        print("op_restart() not yet supported")
-        sys.exit()
+        print_line("op_restart() not yet supported")
+

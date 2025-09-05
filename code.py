@@ -479,13 +479,6 @@ class ZMachine:
         except Exception as e:
             pass #existing folder?
         try:
-            save_data = {
-                'memory': bytes(self.memory[:self.variables_addr + 480]),  # Dynamic memory only
-                'pc': self.pc,
-                'call_stack': self.call_stack,
-                #'global_vars': self.global_vars,
-                'z_version': self.z_version
-            }
 
             # Simple binary format save (could be improved)
             os.remove(save_path)
@@ -496,18 +489,16 @@ class ZMachine:
                 f.write((self.pc).to_bytes(2, 'big'))
                 # Write memory
                 globals = bytes(self.memory[self.variables_addr:self.variables_addr + 480])
-                print(f"globals len: {len(globals)}")
-                print(f"pc: 0x{self.pc:04x}")
+                #print(f"globals len: {len(globals)}")
+                #print(f"pc: 0x{self.pc:04x}")
                 f.write(len(globals).to_bytes(2, 'big'))
                 f.write(globals)
-                #f.write(len(save_data['memory']).to_bytes(2, 'big'))
-                #f.write(save_data['memory'])
 
                 f.write(len(self.call_stack).to_bytes(1, 'big'))
                 for i in range(len(self.call_stack)):
                     frame = self.call_stack[i]
-                    frame.print(3)
-                    data = frame.serialize(3)
+                    data = frame.serialize(self.debug)
+                    print("frame size:",len(data))
                     f.write(len(data).to_bytes(2, 'big'))
                     f.write(data)
 
@@ -539,19 +530,18 @@ class ZMachine:
                 if version != self.z_version:
                     raise ValueError("Save file version mismatch")
                 self.pc = int.from_bytes(f.read(2), 'big')
-                print(f"pc: 0x{self.pc:04x}")
+                #print(f"pc: 0x{self.pc:04x}")
 
                 # Read memory
                 mem_size = int.from_bytes(f.read(2), 'big')
                 mem_data = f.read(mem_size)
                 self.memory[self.variables_addr:self.variables_addr + 480] = mem_data
-                print(f"globals len:{mem_size}")
+                #print(f"globals len:{mem_size}")
                 # Read call stack
                 stack_size = int.from_bytes(f.read(1))
-                print("stack size:",stack_size)
+                #print("stack size:",stack_size)
                 self.call_stack = []
-                for i in range(len(self.call_stack)):
-                    frame.print(3)
+                for i in range(stack_size):
                     frame_size = int.from_bytes(f.read(2), 'big')
                     print(f"frame size is {frame_size}")
                     mem = f.read(frame_size)
