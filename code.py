@@ -39,6 +39,17 @@ from adafruit_hid.keycode import Keycode
 import supervisor
 import storage
 
+# terminalio
+from adafruit_fruitjam import peripherals
+from displayio import Group
+from terminalio import FONT
+
+import gc
+import supervisor
+import displayio
+from lvfontio import OnDiskFont
+from adafruit_fruitjam.peripherals import request_display_config
+from adafruit_color_terminal import ColorTerminal
 # Import our custom modules
 from zmachine_opcodes import ZProcessor, Frame
 from keyboard_handler import ZKeyboardHandler
@@ -157,6 +168,8 @@ class ZMachine:
         self.processor = ZProcessor(self)
         self.keyboard_handler = ZKeyboardHandler(self)
 
+        self.terminal = None
+
     def init_display(self):
         """Initialize DVI display on Fruit Jam"""
         try:
@@ -189,7 +202,6 @@ class ZMachine:
 
             # Setup text display
             self.setup_text_display()
-
             print("Fruit Jam DVI display initialized successfully")
             return True
 
@@ -213,6 +225,11 @@ class ZMachine:
         # Separator line (row 1)
         separator_rect = Rect(0, CHAR_HEIGHT, DISPLAY_WIDTH, 1, fill=theme['text'])
         self.main_group.append(separator_rect)
+
+        main_group = displayio.Group()
+        display = supervisor.runtime.display
+        #display.root_group = main_group
+        self.terminal = ColorTerminal(FONT, DISPLAY_WIDTH, DISPLAY_HEIGHT)
 
         # Main text area (rows 2-29)
         self.text_labels = []
@@ -373,6 +390,7 @@ class ZMachine:
             return
         print(text,end="")
         return
+        self.terminal.write(text)
         self.line_buff += text
         if self.line_buff[-1] == '\n':
             # print line
@@ -466,7 +484,7 @@ class ZMachine:
             file_exists = False
         return file_exists
 
-    def save_game(self, save_name=""):
+    def save_game_old(self, save_name=""):
         """Save game state"""
         fn = self.filename.split(".")[0].lower()
         if(len(save_name) > 0):
@@ -487,18 +505,30 @@ class ZMachine:
                 f.write(b'ZSAV')  # Magic number
                 f.write(self.z_version.to_bytes(1))
                 f.write((self.pc).to_bytes(2, 'big'))
-                # Write memory
-                globals = bytes(self.memory[self.variables_addr:self.variables_addr + 480])
-                #print(f"globals len: {len(globals)}")
-                #print(f"pc: 0x{self.pc:04x}")
-                f.write(len(globals).to_bytes(2, 'big'))
-                f.write(globals)
+                print(f"pc: 0x{self.pc:04x}")
+                # Write globals
+                p = self.variables_addr
+                for i in range(16,256):
+                    if i % 16 == 0:
+                        print()
+                    myint = self.processor.read_variable( i )
+                    if i == 16:
+                        print(f"myint {i}: {myint:04x}")
+                    print(f"{myint:04x}",end=" ")
+                    f.write(myint.to_bytes(2,'big'))
+                #globals = bytes(self.memory[self.variables_addr:self.variables_addr + 480])
+                #f.write(globals)
+                #for i in range(240):
+                #    f.write(globals[i*2])
+                #    f.write(globals[i*2+1] & 0xff)
 
-                f.write(len(self.call_stack).to_bytes(1, 'big'))
+                f.write(len(self.call_stack).to_bytes(2, 'big'))
+                print(f"call stack size: {len(self.call_stack)}")
                 for i in range(len(self.call_stack)):
                     frame = self.call_stack[i]
-                    data = frame.serialize(self.debug)
-                    print("frame size:",len(data))
+                    data = frame.serialize(0)
+                    frame.print(3)
+                    print(f"frame size: {len(data)}")
                     f.write(len(data).to_bytes(2, 'big'))
                     f.write(data)
 
@@ -510,7 +540,7 @@ class ZMachine:
             self.print_error(f"Save failed: {e}")
             return False
 
-    def restore_game(self, save_name=""):
+    def restore_game_old(self, processor, save_name=""):
         """Restore game state"""
         fn = self.filename.split(".")[0].lower()
         if(len(save_name) > 0):
@@ -526,27 +556,42 @@ class ZMachine:
                 magic = f.read(4)
                 if magic != b'ZSAV':
                     raise ValueError("Invalid save file")
-                version = f.read(1)[0]
+                version = int.from_bytes(f.read(1))
                 if version != self.z_version:
                     raise ValueError("Save file version mismatch")
                 self.pc = int.from_bytes(f.read(2), 'big')
+                #value = int.from_bytes(f.read(2), 'big')
                 #print(f"pc: 0x{self.pc:04x}")
 
                 # Read memory
-                mem_size = int.from_bytes(f.read(2), 'big')
-                mem_data = f.read(mem_size)
-                self.memory[self.variables_addr:self.variables_addr + 480] = mem_data
-                #print(f"globals len:{mem_size}")
+                #mem_size = int.from_bytes(f.read(2), 'big')
+                #print("mem_size:",mem_size)
+                #mem_data = int.from_bytes(f.read(2),'big')
+                for i in range(16,256):
+                #for i in range(240):
+                    if i % 16 == 0:
+                        print()
+                    #self.memory[self.variables_addr+i*2] = int.from_bytes(f.read(2),'big')
+                    myint = int.from_bytes(f.read(2),'big')
+                    processor.write_variable(i, myint)
+                    print(f"{myint:04x}",end=" ")
+                    #self.memory[self.variables_addr+i*2] = (myint >> 8) & 0xff
+                    #self.memory[self.variables_addr+i*2+1] = myint & 0xff
+                print("restoring to room ",end="")
+                if processor.read_variable(16) != 0 :
+                    processor.op_print_obj([processor.read_variable( 16 )])
+
                 # Read call stack
-                stack_size = int.from_bytes(f.read(1))
-                print("stack size:",stack_size)
+                stack_size = int.from_bytes(f.read(2),'big')
+                print("call stack size:",stack_size)
                 self.call_stack = []
+
                 for i in range(stack_size):
                     frame_size = int.from_bytes(f.read(2), 'big')
-                    print(f"frame size is {frame_size}")
+                    print(f"frame size: {frame_size}")
                     mem = f.read(frame_size)
                     frame = Frame()
-                    frame.unserialize(mem,3)
+                    frame.unserialize(mem,0)
                     frame.print(3)
                     self.call_stack.append(frame)
             self.print_text(f"Game restored from {save_name}\n")

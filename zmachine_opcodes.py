@@ -9,6 +9,9 @@ interactive fiction games like Zork.
 import sys
 import random
 import re
+import os
+
+SAVE_DIR = "/saves/cpz"
 
 # Z-machine instruction types
 LONG_FORM = 0
@@ -95,15 +98,18 @@ class Frame:
             print()
         self.return_pointer = int.from_bytes(data[0:4],"big")
         print(f"return pointer: 0x{self.return_pointer:04x}")
-        self.ctype = int(data[4])
+        self.ctype = int.from_bytes(data[4:6],"big")
         for i in range(15):
-            self.local_vars[i] = int.from_bytes(data[5+i*2:5+i*2+1],"big")
-        #print("local vars:",self.local_vars)
+            self.local_vars[i] = int.from_bytes(data[6+i*2:6+i*2+2],"big")
+        print("local vars:",self.local_vars)
         stacklen = int.from_bytes(data[36:38],"big")
         print("stacklen:",stacklen)
+        if stacklen > 200:
+            print(f"bad stack length ({stacklen})")
+            sys.exit()
         print("data size:",len(data))
         for i in range(stacklen):
-            self.data_stack.append(int.from_bytes(data[38+i*2:38+i*2+1],"big"))
+            self.data_stack.append(int.from_bytes(data[38+i*2:38+i*2+2],"big"))
 
     def serialize(self, debug = 3):
         size = (4  # return_pointer
@@ -112,17 +118,15 @@ class Frame:
             + 2 # data_stack len
             + len(self.data_stack)*2 # data_stack
             )
-        if debug >= 3:
-            print(f"frame size is {size}, stack size is {len(self.data_stack)}")
         data = bytearray()
         data[0:4] = self.return_pointer.to_bytes(4, 'big')
-        data[4] = self.ctype.to_bytes(1)
+        data[4:6] = self.ctype.to_bytes(2, 'big')
         for i in range(15):
-            data[5+i*2:5+i*2+1] = int(self.local_vars[i]).to_bytes(2, 'big')
-        data[36:38] = len(self.data_stack).to_bytes(2, 'big')
+            data[6+i*2:6+i*2+2] = int(self.local_vars[i]).to_bytes(2, 'big')
+        data[37:39] = len(self.data_stack).to_bytes(2, 'big')
         #print(f"len: {len(self.data_stack)}, {self.data_stack}")
         for i in range(len(self.data_stack)):
-            data[38+i*2:38+i*2+1] = self.data_stack[i].to_bytes(2, 'big')
+            data[39+i*2:39+i*2+2] = self.data_stack[i].to_bytes(2, 'big')
         if debug >= 3:
             i = 0
             for byte_value in data:
@@ -138,8 +142,8 @@ class Frame:
             print(f"## frame ##")
             print(f"# return_pointer: 0x{self.return_pointer:02x}")
             print(f"# local_vars: {self.local_vars}")
-            #if len(self.data_stack) > 0:
-            print(f"# data stack: {self.data_stack}")
+            if len(self.data_stack) > 0:
+                print(f"# data stack: {self.data_stack}")
             print("## end ##")
 
 class ZProcessor:
@@ -309,7 +313,8 @@ class ZProcessor:
         self.zm.print_debug(3,f"## frame {i} ##")
         self.zm.print_debug(3,f"# return_pointer: 0x{frame.return_pointer:02X}")
         self.zm.print_debug(3,f"# local_vars: {frame.local_vars}")
-        self.zm.print_debug(3,f"# data stack: {frame.data_stack}")
+        if len(frame.data_stack) > 0:
+            self.zm.print_debug(3,f"# data stack: {frame.data_stack}")
         self.zm.print_debug(3,"## end ##")
 
     def print_frame_stack(self):
@@ -575,7 +580,6 @@ class ZProcessor:
         """Address property length to current property pointer"""
         return prop_addr + value + 1;
 
-    # Opcode implementations (simplified)
     def op_rtrue(self, operands):
         """Return true from current routine"""
         self.return_from_routine(1)
@@ -872,7 +876,7 @@ class ZProcessor:
             if h_type < 4:
                 pass
                 # not yet, waiting on curses
-                #self.show_status()
+                self.show_status()
 
             # Reset line count
             self.zm.lines_written = 0
@@ -1667,27 +1671,142 @@ class ZProcessor:
         #self.store_result(self.zm.save_game())
         #for i in range(len(self.zm.call_stack)):
         #    self.zm.call_stack[i].print(3)
-        value = self.zm.save_game()
+        value = self.save_game()
         self.zm.print_debug(0,f"pc: 0x{self.zm.pc:04x}")
         frame = self.zm.call_stack[-1]
         self.zm.print_debug(0,f"# return_pointer: 0x{frame.return_pointer:02X}")
         self.zm.print_debug(0,f"# local_vars: {frame.local_vars}")
         self.zm.print_debug(0,f"# data stack: {frame.data_stack}")
-        self.return_from_routine(value)
+        self.branch(value == True)
+        return value == True
 
     def op_restore(self, operands):
         print("op_restore()")
         # future work: allow filename choice
-        #self.return_from_routine(self.zm.restore_game())
         self.zm.print_debug(0,f"before pc: 0x{self.zm.pc:04x}")
-        self.zm.restore_game()
+        value = self.restore_game()
         self.zm.print_debug(0,f"after pc: 0x{self.zm.pc:04x}")
 
         frame = self.zm.call_stack[-1]
         self.zm.print_debug(0,f"# return_pointer: 0x{frame.return_pointer:02X}")
         self.zm.print_debug(0,f"# local_vars: {frame.local_vars}")
         #self.zm.print_debug(0,f"# data stack: {frame.data_stack}")
+        self.branch(value == True)
+        return value == True
 
     def op_restart(self, operands):
         print_line("op_restart() not yet supported")
 
+    def restore_game(self, save_name=""):
+        """Restore game state"""
+        fn = self.zm.filename.split(".")[0].lower()
+        if(len(save_name) > 0):
+            fn += "." + save_name
+        save_name = fn
+        try:
+            save_path = f"{SAVE_DIR}/{save_name}.sav"
+            print(f"save path: {save_path}")
+            if not self.zm.does_file_exist(save_path):
+                raise FileNotFoundError(f"Save file not found: {save_name}")
+            with open(save_path, 'rb') as f:
+                # Read header
+                magic = f.read(4)
+                if magic != b'ZSAV':
+                    raise ValueError("Invalid save file")
+                version = int.from_bytes(f.read(1))
+                if version != h_type:
+                    raise ValueError("Save file version mismatch")
+                self.pc = int.from_bytes(f.read(2), 'big')
+                #value = int.from_bytes(f.read(2), 'big')
+                #print(f"pc: 0x{self.pc:04x}")
+
+                # Read memory
+                #mem_size = int.from_bytes(f.read(2), 'big')
+                #print("mem_size:",mem_size)
+                #mem_data = int.from_bytes(f.read(2),'big')
+                for i in range(16,256):
+                    if i % 16 == 0:
+                        print()
+                    #self.memory[self.variables_addr+i*2] = int.from_bytes(f.read(2),'big')
+                    myint = int.from_bytes(f.read(2),'big')
+                    self.write_variable(i, myint)
+                    print(f"{myint:04x}",end=" ")
+                print("restoring to room ",end="")
+                if self.read_variable(16) != 0 :
+                    self.op_print_obj([self.read_variable( 16 )])
+
+                # Read call stack
+                stack_size = int.from_bytes(f.read(2),'big')
+                print("call stack size:",stack_size)
+                self.call_stack = []
+
+                for i in range(stack_size):
+                    frame_size = int.from_bytes(f.read(2), 'big')
+                    print(f"frame size: {frame_size}")
+                    mem = f.read(frame_size)
+                    frame = Frame()
+                    frame.unserialize(mem,0)
+                    frame.print(3)
+                    self.call_stack.append(frame)
+            self.zm.print_text(f"Game restored from {save_name}\n")
+            return True
+
+        except Exception as e:
+            self.zm.print_error(f"Restore failed: {e}")
+            return False
+
+    def save_game(self, save_name=""):
+        """Save game state"""
+        fn = self.zm.filename.split(".")[0].lower()
+        if(len(save_name) > 0):
+            fn += "." + save_name
+        save_name = fn
+        try:
+            save_path = f"{SAVE_DIR}/{save_name}.sav"
+            self.print_debug(3,f"save path:{save_path}")
+            os.mkdir(SAVE_DIR)
+        except Exception as e:
+            pass #existing folder?
+        try:
+
+            # Simple binary format save (could be improved)
+            os.remove(save_path)
+            with open(save_path, 'wb') as f:
+                # Write header
+                f.write(b'ZSAV')  # Magic number
+                f.write(h_type.to_bytes(1))
+                f.write((self.zm.pc).to_bytes(2, 'big'))
+                print(f"pc: 0x{self.zm.pc:04x}")
+                # Write globals
+                p = self.zm.variables_addr
+                for i in range(16,256):
+                    if i % 16 == 0:
+                        print()
+                    myint = self.read_variable( i )
+                    if i == 16:
+                        print(f"myint {i}: {myint:04x}")
+                    print(f"{myint:04x}",end=" ")
+                    f.write(myint.to_bytes(2,'big'))
+                #globals = bytes(self.memory[self.variables_addr:self.variables_addr + 480])
+                #f.write(globals)
+                #for i in range(240):
+                #    f.write(globals[i*2])
+                #    f.write(globals[i*2+1] & 0xff)
+
+                f.write(len(self.zm.call_stack).to_bytes(2, 'big'))
+                print(f"call stack size: {len(self.zm.call_stack)}")
+                for i in range(len(self.zm.call_stack)):
+                    frame = self.zm.call_stack[i]
+                    data = frame.serialize(0)
+                    frame.print(3)
+                    print(f"frame size: {len(data)}")
+                    f.write(len(data).to_bytes(2, 'big'))
+                    f.write(data)
+
+
+            self.zm.print_text(f"Game saved as {save_name}\n")
+            return True
+
+        except Exception as e:
+            self.zm.print_error(f"Save failed: {e}")
+            return False
