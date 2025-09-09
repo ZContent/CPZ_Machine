@@ -1691,8 +1691,12 @@ class ZProcessor:
         self.zm.print_debug(0,f"# return_pointer: 0x{frame.return_pointer:02X}")
         self.zm.print_debug(0,f"# local_vars: {frame.local_vars}")
         #self.zm.print_debug(0,f"# data stack: {frame.data_stack}")
-        self.branch(value == True)
-        return value == True
+
+        #value is 0 for failure, 1 for "save succeeded" and 2 for "the game is being restored
+        if value == True:
+            value = 2
+        self.branch(2)
+        return 2
 
     def op_restart(self, operands):
         print_line("op_restart() not yet supported")
