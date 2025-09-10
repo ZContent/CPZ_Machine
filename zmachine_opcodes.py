@@ -97,7 +97,7 @@ class Frame:
                 print(f"0x{data[i]:02x}",end=" ")
             print()
         self.return_pointer = int.from_bytes(data[0:4],"big")
-        print(f"return pointer: 0x{self.return_pointer:04x}")
+        #print(f"return pointer: 0x{self.return_pointer:04x}")
         self.ctype = int.from_bytes(data[4:6],"big")
         for i in range(15):
             self.local_vars[i] = int.from_bytes(data[6+i*2:6+i*2+2],"big")
@@ -107,7 +107,7 @@ class Frame:
         if stacklen > 200:
             print(f"bad stack length ({stacklen})")
             sys.exit()
-        print("data size:",len(data))
+        #print("data size:",len(data))
         for i in range(stacklen):
             self.data_stack.append(int.from_bytes(data[38+i*2:38+i*2+2],"big"))
 
@@ -454,7 +454,7 @@ class ZProcessor:
         if (branch_byte & 0x80) == 0:
             branch_on_true = not branch_on_true
         branch_offset = branch_byte & 0x3F
-        self.zm.print_debug(3,"branch_on_true: {branch_on_true}")
+        self.zm.print_debug(3,f"branch_on_true: {branch_on_true}")
         self.zm.print_debug(3,f"pc = 0x{self.zm.pc:02X}")
         if (branch_byte & 0x40) == 0:
             # Two-byte offset
@@ -466,10 +466,9 @@ class ZProcessor:
                 branch_offset |= 0xC000  # Sign extend
             if branch_offset > 0 and branch_offset & 0x8000 :
                 branch_offset -= 0x10000 # make negative
-            self.zm.print_debug(3,f"branch_offset=0x{branch_offset:0X}")
+            self.zm.print_debug(3,f"branch_offset: 0x{branch_offset:04x}")
         if branch_on_true == True:
-            self.zm.print_debug(3,f"branch_on_true: {branch_on_true}")
-            self.zm.print_debug(3,f"branch offset is 0x{branch_offset:04X}")
+
             if branch_offset == 0:
                 self.op_rfalse([])
             elif branch_offset == 1:
@@ -1673,6 +1672,7 @@ class ZProcessor:
         #    self.zm.call_stack[i].print(3)
         value = self.save_game()
         self.zm.print_debug(0,f"pc: 0x{self.zm.pc:04x}")
+        self.print_frame_stack()
         frame = self.zm.call_stack[-1]
         self.zm.print_debug(0,f"# return_pointer: 0x{frame.return_pointer:02X}")
         self.zm.print_debug(0,f"# local_vars: {frame.local_vars}")
@@ -1686,17 +1686,18 @@ class ZProcessor:
         self.zm.print_debug(0,f"before pc: 0x{self.zm.pc:04x}")
         value = self.restore_game()
         self.zm.print_debug(0,f"after pc: 0x{self.zm.pc:04x}")
-
-        frame = self.zm.call_stack[-1]
-        self.zm.print_debug(0,f"# return_pointer: 0x{frame.return_pointer:02X}")
-        self.zm.print_debug(0,f"# local_vars: {frame.local_vars}")
+        #self.zm.debug = 3
+        #self.print_frame_stack()
+        #sys.exit()
+        #frame = self.zm.call_stack[-1]
+        #self.zm.print_debug(0,f"# return_pointer: 0x{frame.return_pointer:02X}")
+        #self.zm.print_debug(0,f"# local_vars: {frame.local_vars}")
         #self.zm.print_debug(0,f"# data stack: {frame.data_stack}")
 
-        #value is 0 for failure, 1 for "save succeeded" and 2 for "the game is being restored
-        if value == True:
-            value = 2
-        self.branch(2)
-        return 2
+        #value is 0 for failure, 1 for "save succeeded" and 2 for "the game is being restored"
+        #self.zm.debug = 3 # turn on debugging here
+        self.branch(value)
+        return value
 
     def op_restart(self, operands):
         print_line("op_restart() not yet supported")
@@ -1720,9 +1721,9 @@ class ZProcessor:
                 version = int.from_bytes(f.read(1))
                 if version != h_type:
                     raise ValueError("Save file version mismatch")
-                self.pc = int.from_bytes(f.read(2), 'big')
+                self.zm.pc = int.from_bytes(f.read(2), 'big')
                 #value = int.from_bytes(f.read(2), 'big')
-                #print(f"pc: 0x{self.pc:04x}")
+                #print(f"pc: 0x{self.zm.pc:04x}")
 
                 # Read memory
                 #mem_size = int.from_bytes(f.read(2), 'big')
@@ -1738,11 +1739,11 @@ class ZProcessor:
                 print("restoring to room ",end="")
                 if self.read_variable(16) != 0 :
                     self.op_print_obj([self.read_variable( 16 )])
-
+                print()
                 # Read call stack
                 stack_size = int.from_bytes(f.read(2),'big')
                 print("call stack size:",stack_size)
-                self.call_stack = []
+                self.zm.call_stack = []
 
                 for i in range(stack_size):
                     frame_size = int.from_bytes(f.read(2), 'big')
@@ -1751,8 +1752,12 @@ class ZProcessor:
                     frame = Frame()
                     frame.unserialize(mem,0)
                     frame.print(3)
-                    self.call_stack.append(frame)
+                    self.zm.call_stack.append(frame)
+                    print(f"frame {i}: call stack size:{len(self.zm.call_stack)}")
+                self.print_frame_stack()
+
             self.zm.print_text(f"Game restored from {save_name}\n")
+            #self.zm.pc = self.call_stack[-1].return_pointer
             return True
 
         except Exception as e:
@@ -1802,8 +1807,8 @@ class ZProcessor:
                 for i in range(len(self.zm.call_stack)):
                     frame = self.zm.call_stack[i]
                     data = frame.serialize(0)
-                    frame.print(3)
-                    print(f"frame size: {len(data)}")
+                    #frame.print(3)
+                    #print(f"frame size: {len(data)}")
                     f.write(len(data).to_bytes(2, 'big'))
                     f.write(data)
 
