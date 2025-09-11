@@ -121,6 +121,16 @@ class ZMachine:
     }
 
     def __init__(self):
+        """
+        debug levels (in flux)
+        Preceed command with '~' to enable debug level
+        i.e, "~~restore" for debug level 2 for restore command:
+        0 - no debugging
+        1 - opcode only
+        2 - add local vars and stack
+        3 - add routines
+        4 - add loops
+        """
         self.debug = 0 # debug level, 0 = no debugging output
         self.filename = ""
         self.DATA_SIZE = 1024*20
@@ -259,7 +269,7 @@ class ZMachine:
             story_path = f"{STORY_DIR}/{filename}"
             sp = os.stat(story_path)
             if not sp[0]:
-                raise FileNotFoundError(f"Story file not found: {filename}")
+                raise RuntimeError(f"Story file not found: {filename}")
             # Check file size
             stat = os.stat(story_path)
             if stat[6] > MAX_STORY_SIZE:
@@ -431,7 +441,7 @@ class ZMachine:
 
     def print_debug(self, level, msg):
         if self.debug >= level :
-            print(f"debug: {msg}")
+            print(f"debug:{msg}")
 
     def print_error(self, error_msg):
         """Print error message in error color"""
@@ -484,73 +494,14 @@ class ZMachine:
             file_exists = False
         return file_exists
 
-    def save_game_old(self, save_name=""):
-        """Save game state"""
-        fn = self.filename.split(".")[0].lower()
-        if(len(save_name) > 0):
-            fn += "." + save_name
-        save_name = fn
-        try:
-            save_path = f"{SAVE_DIR}/{save_name}.sav"
-            self.print_debug(3,f"save path:{save_path}")
-            os.mkdir(SAVE_DIR)
-        except Exception as e:
-            pass #existing folder?
-        try:
-
-            # Simple binary format save (could be improved)
-            os.remove(save_path)
-            with open(save_path, 'wb') as f:
-                # Write header
-                f.write(b'ZSAV')  # Magic number
-                f.write(self.z_version.to_bytes(1))
-                f.write((self.pc).to_bytes(2, 'big'))
-                print(f"pc: 0x{self.pc:04x}")
-                # Write globals
-                p = self.variables_addr
-                for i in range(16,256):
-                    if i % 16 == 0:
-                        print()
-                    myint = self.processor.read_variable( i )
-                    if i == 16:
-                        print(f"myint {i}: {myint:04x}")
-                    print(f"{myint:04x}",end=" ")
-                    f.write(myint.to_bytes(2,'big'))
-                #globals = bytes(self.memory[self.variables_addr:self.variables_addr + 480])
-                #f.write(globals)
-                #for i in range(240):
-                #    f.write(globals[i*2])
-                #    f.write(globals[i*2+1] & 0xff)
-
-                f.write(len(self.call_stack).to_bytes(2, 'big'))
-                print(f"call stack size: {len(self.call_stack)}")
-                for i in range(len(self.call_stack)):
-                    frame = self.call_stack[i]
-                    data = frame.serialize(0)
-                    frame.print(3)
-                    print(f"frame size: {len(data)}")
-                    f.write(len(data).to_bytes(2, 'big'))
-                    f.write(data)
-
-
-            self.print_text(f"Game saved as {save_name}\n")
-            return True
-
-        except Exception as e:
-            self.print_error(f"Save failed: {e}")
-            return False
-
-    def restore_game_old(self, processor, save_name=""):
+    def restore_game(self, save="default"):
         """Restore game state"""
-        fn = self.filename.split(".")[0].lower()
-        if(len(save_name) > 0):
-            fn += "." + save_name
-        save_name = fn
+        save_name = self.filename.split(".")[0].lower() + "." + save
         try:
             save_path = f"{SAVE_DIR}/{save_name}.sav"
-            print(f"save path: {save_path}")
+            self.print_debug(3,f"save path: {save_path}")
             if not self.does_file_exist(save_path):
-                raise FileNotFoundError(f"Save file not found: {save_name}")
+                raise RuntimeError(f"Save file not found: {save_name}")
             with open(save_path, 'rb') as f:
                 # Read header
                 magic = f.read(4)
@@ -561,44 +512,67 @@ class ZMachine:
                     raise ValueError("Save file version mismatch")
                 self.pc = int.from_bytes(f.read(2), 'big')
                 #value = int.from_bytes(f.read(2), 'big')
-                #print(f"pc: 0x{self.pc:04x}")
+                #print(f"pc: 0x{self.zm.pc:04x}")
 
-                # Read memory
-                #mem_size = int.from_bytes(f.read(2), 'big')
-                #print("mem_size:",mem_size)
-                #mem_data = int.from_bytes(f.read(2),'big')
-                for i in range(16,256):
-                #for i in range(240):
-                    if i % 16 == 0:
-                        print()
-                    #self.memory[self.variables_addr+i*2] = int.from_bytes(f.read(2),'big')
-                    myint = int.from_bytes(f.read(2),'big')
-                    processor.write_variable(i, myint)
-                    print(f"{myint:04x}",end=" ")
-                    #self.memory[self.variables_addr+i*2] = (myint >> 8) & 0xff
-                    #self.memory[self.variables_addr+i*2+1] = myint & 0xff
-                print("restoring to room ",end="")
-                if processor.read_variable(16) != 0 :
-                    processor.op_print_obj([processor.read_variable( 16 )])
-
+                # Read dynamic memory
+                mem_size = int.from_bytes(f.read(2), 'big')
+                self.memory[0:mem_size] = f.read(mem_size)
                 # Read call stack
                 stack_size = int.from_bytes(f.read(2),'big')
-                print("call stack size:",stack_size)
                 self.call_stack = []
 
                 for i in range(stack_size):
                     frame_size = int.from_bytes(f.read(2), 'big')
-                    print(f"frame size: {frame_size}")
                     mem = f.read(frame_size)
                     frame = Frame()
                     frame.unserialize(mem,0)
-                    frame.print(3)
+                    #frame.print(3)
                     self.call_stack.append(frame)
-            self.print_text(f"Game restored from {save_name}\n")
+                self.processor.print_frame_stack()
+
+            self.print_text(f"Game restored from {save}\n")
+            #self.zm.pc = self.call_stack[-1].return_pointer
             return True
 
         except Exception as e:
             self.print_error(f"Restore failed: {e}")
+            return False
+
+    def save_game(self, save="default"):
+        """Save game state"""
+        save_name = self.filename.split(".")[0].lower() + "." + save
+        try:
+            save_path = f"{SAVE_DIR}/{save_name}.sav"
+            self.print_debug(3,f"save path:{save_path}")
+            os.mkdir(SAVE_DIR)
+        except Exception as e:
+            pass #existing folder?
+
+        try:
+            #os.remove(save_path)
+            with open(save_path, 'wb') as f:
+                # Write header
+                f.write(b'ZSAV')  # Magic number
+                f.write(self.z_version.to_bytes(1))
+                f.write((self.pc).to_bytes(2, 'big'))
+                # write dynamic memory
+                mem_size = self.read_word(0x0e)
+                f.write((mem_size).to_bytes(2, 'big'))
+                f.write(self.memory[0:mem_size])
+
+                f.write(len(self.call_stack).to_bytes(2, 'big'))
+                for i in range(len(self.call_stack)):
+                    frame = self.call_stack[i]
+                    data = frame.serialize(0)
+                    #frame.print(3)
+                    #print(f"frame size: {len(data)}")
+                    f.write(len(data).to_bytes(2, 'big'))
+                    f.write(data)
+            self.print_text(f"Game saved as {save}\n")
+            return True
+
+        except Exception as e:
+            self.print_error(f"Save failed: {e}")
             return False
 
     def change_theme(self, theme_name):

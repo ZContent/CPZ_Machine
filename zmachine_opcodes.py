@@ -11,7 +11,7 @@ import random
 import re
 import os
 
-SAVE_DIR = "/saves/cpz"
+SAVE_DIR = "/saves/cpz_machine"
 
 # Z-machine instruction types
 LONG_FORM = 0
@@ -101,9 +101,7 @@ class Frame:
         self.ctype = int.from_bytes(data[4:6],"big")
         for i in range(15):
             self.local_vars[i] = int.from_bytes(data[6+i*2:6+i*2+2],"big")
-        print("local vars:",self.local_vars)
         stacklen = int.from_bytes(data[36:38],"big")
-        print("stacklen:",stacklen)
         if stacklen > 200:
             print(f"bad stack length ({stacklen})")
             sys.exit()
@@ -375,7 +373,7 @@ class ZProcessor:
             # Global variable
             global_index = var_num - 16
             addr = self.zm.variables_addr + global_index*2
-            self.zm.print_debug(3,f"index:{global_index}, var mem start: 0x{self.zm.variables_addr:04X}, address: 0x{addr:04X}")
+            #self.zm.print_debug(3,f"index:{global_index}, var mem start: 0x{self.zm.variables_addr:04X}, address: 0x{addr:04X}")
             self.zm.write_word(addr, value)
             self.zm.print_debug(3,f"write global var {global_index} to 0x{addr:04x}: {value}")
 
@@ -416,7 +414,7 @@ class ZProcessor:
             self.zm.opcode = full_opcode
             # Execute opcode
             if full_opcode in self.opcodes:
-                self.zm.print_debug(1,f"**start {self.instruction_count}:{self.opcodes[full_opcode][1]} {operands} pc:0x{(self.zm.pc-pccount):04x}/0x{self.zm.pc:04x} opcode:0x{opcode_byte:02X}/0x{opcode:02X}/0x{full_opcode:02X}")
+                self.zm.print_debug(1,f"**start {self.instruction_count}:{self.opcodes[full_opcode][1]} {operands} pc:0x{(self.zm.pc-pccount):04x}/0x{self.zm.pc:04x} opcode:0x{opcode_byte:02x}/0x{opcode:02x}/0x{full_opcode:02x}")
                 self.opcodes[full_opcode][0](operands)
                 self.zm.print_debug(2,f"local vars: {self.zm.call_stack[-1].local_vars}")
                 self.zm.print_debug(2,f"data stack: {self.zm.call_stack[-1].data_stack}")
@@ -479,10 +477,15 @@ class ZProcessor:
 
     def print_object(self, obj):
         objp = self.get_object_address(obj)
+        name = self.get_object_name(obj)
+        parent = self.zm.read_byte(objp + object_parent)
+        next = self.zm.read_byte(objp + object_next)
+        child = self.zm.read_byte(objp + object_child)
         self.zm.print_debug(3,f"~~Object {obj}(0x{objp:04x}):")
-        self.zm.print_debug(3,f"~parent: {self.zm.read_byte(objp + object_parent)}")
-        self.zm.print_debug(3,f"~next: {self.zm.read_byte(objp + object_next)}")
-        self.zm.print_debug(3,f"~child: {self.zm.read_byte(objp + object_child)}")
+        self.zm.print_debug(3,f"~name: {name}")
+        self.zm.print_debug(3,f"~parent: {parent} ({self.get_object_name(parent)})")
+        self.zm.print_debug(3,f"~next: {next} ({self.get_object_name(next)})")
+        self.zm.print_debug(3,f"~child: {child} ({self.get_object_name(child)})")
 
     def read_object(self, objp, field):
         self.zm.print_debug(3,f"read_object() {objp} {field}")
@@ -734,7 +737,7 @@ class ZProcessor:
                 if word_index > (self.zm.dictionary_size -1):
                     word_index = self.zm.dictionary_size -1
                 offset = self.zm.dictionary_offset + ( word_index * entry_size )
-                self.zm.print_debug(3,f"index: {word_index}/{chop} compare: 0x{buff[0]:04x} with 0x{self.zm.read_word(offset + 0):04x}, offset: {offset}")
+                self.zm.print_debug(4,f"index: {word_index}/{chop} compare: 0x{buff[0]:04x} with 0x{self.zm.read_word(offset + 0):04x}, offset: {offset}")
                 status1 = (buff[0] & mask[0]) - (self.zm.read_word(offset+0) & mask[0])
                 status2 = (buff[1] & mask[1]) - (self.zm.read_word(offset+2) & mask[1])
                 #status1 = buff[0] - self.zm.read_word(offset + 0)
@@ -875,7 +878,7 @@ class ZProcessor:
             if h_type < 4:
                 pass
                 # not yet, waiting on curses
-                self.show_status()
+                #self.show_status()
 
             # Reset line count
             self.zm.lines_written = 0
@@ -1099,19 +1102,19 @@ class ZProcessor:
         synonym = 0
         while addr < len(self.zm.memory):
             word = self.zm.read_word(addr)
-            self.zm.print_debug(3,f"read word 0x{word:04x} at address 0x{addr:04x}")
+            self.zm.print_debug(4,f"read word 0x{word:04x} at address 0x{addr:04x}")
             addr += 2
 
             # Extract 5-bit characters
             for shift in [10, 5, 0]:
                 char_code = (word >> shift) & 0x1F
-                self.zm.print_debug(3,f"code:0x{char_code:02x} syn:{synonym_flag} zscii:{zscii_flag} xscii:{zscii:02x}")
+                self.zm.print_debug(4,f"code:0x{char_code:02x} syn:{synonym_flag} zscii:{zscii_flag} xscii:{zscii:02x}")
                 if synonym_flag:
                     synonym_flag = 0
                     synonym = ( synonym - 1 ) * 64
                     saddr = self.zm.read_word( self.zm.synonyms_offset + synonym + ( char_code * 2 ) ) * 2
                     syntext = self.decode_string( saddr )
-                    self.zm.print_debug(3,f"synonym at 0x{saddr:04x} is '{syntext}'")
+                    self.zm.print_debug(4,f"synonym at 0x{saddr:04x} is '{syntext}'")
                     text += syntext
                     shift_state = shift_lock
                 elif zscii_flag:
@@ -1131,7 +1134,7 @@ class ZProcessor:
                         character from the two codes and output it.
                         """
                         zscii_flag = 0
-                        self.zm.print_debug(3,f"write_char: 0x{int(zscii)|char_code:02x} ({chr(int(zscii)|char_code)})")
+                        self.zm.print_debug(4,f"write_char: 0x{int(zscii)|char_code:02x} ({chr(int(zscii)|char_code)})")
                         self.write_zchar( int(zscii) | int(char_code))
                 elif char_code > 5:
                     char_code -= 6
@@ -1176,6 +1179,7 @@ class ZProcessor:
 
     def op_get_sibling(self, operands):
         self.zm.print_debug(3,f"op_get_sibling({operands[0]})")
+        self.print_object(operands[0])
         obj = operands[0]
         next = self.read_object(self.get_object_address(obj), object_next)
         self.zm.print_debug(3,f"sibling is {next}")
@@ -1188,6 +1192,7 @@ class ZProcessor:
     """
     def op_get_child(self, operands):
         self.zm.print_debug(3,f"op_get_child({operands[0]})")
+        self.print_object(operands[0])
         obj = operands[0]
         child = self.read_object(self.get_object_address(obj), object_child)
         self.zm.print_debug(3,f"child is {child}")
@@ -1308,6 +1313,21 @@ class ZProcessor:
         offset = self.zm.object_table_addr + (max_properties - 1) * 2 + (obj - 1) * object_size
         return offset
 
+    def get_object_name(self, obj):
+        # Check for NULL object
+        if obj == 0:
+            return
+
+        # Calculate address of property list
+        offset = self.get_object_address(obj)
+        offset += property_offset
+
+        # Read the property list address and skip the count byte
+        address = self.zm.read_word(offset) + 1
+
+        # Decode and output text at address
+        return self.decode_string(address)
+
     def op_test_attr(self, operands):
         """ Test if an attribute bit is set."""
         obj = operands[0]
@@ -1348,6 +1368,9 @@ class ZProcessor:
         self.zm.print_debug(3,f"op_insert_obj({operands[0]} {operands[1]})")
         obj1 = operands[0]
         obj2 = operands[1]
+        self.zm.print_debug(3,"before insert:")
+        self.print_object(obj1)
+        self.print_object(obj2)
         # Get addresses of both objects
         obj1p = self.get_object_address(obj1)
         obj2p = self.get_object_address(obj2)
@@ -1368,6 +1391,10 @@ class ZProcessor:
         # If object 2 had children then link them into the next child field of object 1
         if child2 != 0:
             self.write_object(obj1p, object_next, child2)
+
+        self.zm.print_debug(3,"after insert:")
+        self.print_object(obj1)
+        self.print_object(obj2)
 
     """
     Load a word from an array of words
@@ -1670,152 +1697,17 @@ class ZProcessor:
         #self.store_result(self.zm.save_game())
         #for i in range(len(self.zm.call_stack)):
         #    self.zm.call_stack[i].print(3)
-        value = self.save_game()
-        self.zm.print_debug(0,f"pc: 0x{self.zm.pc:04x}")
+        value = self.zm.save_game()
+        self.zm.print_debug(3,f"pc: 0x{self.zm.pc:04x}")
         self.print_frame_stack()
-        frame = self.zm.call_stack[-1]
-        self.zm.print_debug(0,f"# return_pointer: 0x{frame.return_pointer:02X}")
-        self.zm.print_debug(0,f"# local_vars: {frame.local_vars}")
-        self.zm.print_debug(0,f"# data stack: {frame.data_stack}")
         self.branch(value == True)
         return value == True
 
     def op_restore(self, operands):
-        print("op_restore()")
         # future work: allow filename choice
-        self.zm.print_debug(0,f"before pc: 0x{self.zm.pc:04x}")
-        value = self.restore_game()
-        self.zm.print_debug(0,f"after pc: 0x{self.zm.pc:04x}")
-        #self.zm.debug = 3
-        #self.print_frame_stack()
-        #sys.exit()
-        #frame = self.zm.call_stack[-1]
-        #self.zm.print_debug(0,f"# return_pointer: 0x{frame.return_pointer:02X}")
-        #self.zm.print_debug(0,f"# local_vars: {frame.local_vars}")
-        #self.zm.print_debug(0,f"# data stack: {frame.data_stack}")
-
-        #value is 0 for failure, 1 for "save succeeded" and 2 for "the game is being restored"
-        #self.zm.debug = 3 # turn on debugging here
+        value = self.zm.restore_game()
         self.branch(value)
         return value
 
     def op_restart(self, operands):
         print_line("op_restart() not yet supported")
-
-    def restore_game(self, save_name=""):
-        """Restore game state"""
-        fn = self.zm.filename.split(".")[0].lower()
-        if(len(save_name) > 0):
-            fn += "." + save_name
-        save_name = fn
-        try:
-            save_path = f"{SAVE_DIR}/{save_name}.sav"
-            print(f"save path: {save_path}")
-            if not self.zm.does_file_exist(save_path):
-                raise FileNotFoundError(f"Save file not found: {save_name}")
-            with open(save_path, 'rb') as f:
-                # Read header
-                magic = f.read(4)
-                if magic != b'ZSAV':
-                    raise ValueError("Invalid save file")
-                version = int.from_bytes(f.read(1))
-                if version != h_type:
-                    raise ValueError("Save file version mismatch")
-                self.zm.pc = int.from_bytes(f.read(2), 'big')
-                #value = int.from_bytes(f.read(2), 'big')
-                #print(f"pc: 0x{self.zm.pc:04x}")
-
-                # Read memory
-                #mem_size = int.from_bytes(f.read(2), 'big')
-                #print("mem_size:",mem_size)
-                #mem_data = int.from_bytes(f.read(2),'big')
-                for i in range(16,256):
-                    if i % 16 == 0:
-                        print()
-                    #self.memory[self.variables_addr+i*2] = int.from_bytes(f.read(2),'big')
-                    myint = int.from_bytes(f.read(2),'big')
-                    self.write_variable(i, myint)
-                    print(f"{myint:04x}",end=" ")
-                print("restoring to room ",end="")
-                if self.read_variable(16) != 0 :
-                    self.op_print_obj([self.read_variable( 16 )])
-                print()
-                # Read call stack
-                stack_size = int.from_bytes(f.read(2),'big')
-                print("call stack size:",stack_size)
-                self.zm.call_stack = []
-
-                for i in range(stack_size):
-                    frame_size = int.from_bytes(f.read(2), 'big')
-                    print(f"frame size: {frame_size}")
-                    mem = f.read(frame_size)
-                    frame = Frame()
-                    frame.unserialize(mem,0)
-                    frame.print(3)
-                    self.zm.call_stack.append(frame)
-                    print(f"frame {i}: call stack size:{len(self.zm.call_stack)}")
-                self.print_frame_stack()
-
-            self.zm.print_text(f"Game restored from {save_name}\n")
-            #self.zm.pc = self.call_stack[-1].return_pointer
-            return True
-
-        except Exception as e:
-            self.zm.print_error(f"Restore failed: {e}")
-            return False
-
-    def save_game(self, save_name=""):
-        """Save game state"""
-        fn = self.zm.filename.split(".")[0].lower()
-        if(len(save_name) > 0):
-            fn += "." + save_name
-        save_name = fn
-        try:
-            save_path = f"{SAVE_DIR}/{save_name}.sav"
-            self.print_debug(3,f"save path:{save_path}")
-            os.mkdir(SAVE_DIR)
-        except Exception as e:
-            pass #existing folder?
-        try:
-
-            # Simple binary format save (could be improved)
-            os.remove(save_path)
-            with open(save_path, 'wb') as f:
-                # Write header
-                f.write(b'ZSAV')  # Magic number
-                f.write(h_type.to_bytes(1))
-                f.write((self.zm.pc).to_bytes(2, 'big'))
-                print(f"pc: 0x{self.zm.pc:04x}")
-                # Write globals
-                p = self.zm.variables_addr
-                for i in range(16,256):
-                    if i % 16 == 0:
-                        print()
-                    myint = self.read_variable( i )
-                    if i == 16:
-                        print(f"myint {i}: {myint:04x}")
-                    print(f"{myint:04x}",end=" ")
-                    f.write(myint.to_bytes(2,'big'))
-                #globals = bytes(self.memory[self.variables_addr:self.variables_addr + 480])
-                #f.write(globals)
-                #for i in range(240):
-                #    f.write(globals[i*2])
-                #    f.write(globals[i*2+1] & 0xff)
-
-                f.write(len(self.zm.call_stack).to_bytes(2, 'big'))
-                print(f"call stack size: {len(self.zm.call_stack)}")
-                for i in range(len(self.zm.call_stack)):
-                    frame = self.zm.call_stack[i]
-                    data = frame.serialize(0)
-                    #frame.print(3)
-                    #print(f"frame size: {len(data)}")
-                    f.write(len(data).to_bytes(2, 'big'))
-                    f.write(data)
-
-
-            self.zm.print_text(f"Game saved as {save_name}\n")
-            return True
-
-        except Exception as e:
-            self.zm.print_error(f"Save failed: {e}")
-            return False
