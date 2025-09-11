@@ -133,6 +133,7 @@ class ZMachine:
         """
         self.debug = 0 # debug level, 0 = no debugging output
         self.filename = ""
+        self.save_game_name = "default"
         self.DATA_SIZE = 1024*20
         self.STACK_SIZE = 1024
         self.story_data = None
@@ -494,8 +495,17 @@ class ZMachine:
             file_exists = False
         return file_exists
 
-    def restore_game(self, save="default"):
+    def get_save_game_name(self):
+        """get filename to save/restore"""
+        self.print_text(f"Filename (default: {self.save_game_name}):")
+        name = self.get_input()
+        if len(name) > 0:
+            self.save_game_name = name
+        return self.save_game_name
+
+    def restore_game(self):
         """Restore game state"""
+        save = self.get_save_game_name()
         save_name = self.filename.split(".")[0].lower() + "." + save
         try:
             save_path = f"{SAVE_DIR}/{save_name}.sav"
@@ -538,8 +548,9 @@ class ZMachine:
             self.print_error(f"Restore failed: {e}")
             return False
 
-    def save_game(self, save="default"):
+    def save_game(self):
         """Save game state"""
+        save = self.get_save_game_name()
         save_name = self.filename.split(".")[0].lower() + "." + save
         try:
             save_path = f"{SAVE_DIR}/{save_name}.sav"

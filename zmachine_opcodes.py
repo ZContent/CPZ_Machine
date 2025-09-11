@@ -861,12 +861,6 @@ class ZProcessor:
         self.zm.write_byte(token_buf,59)
         self.zm.write_byte(token_buf+1,words)
 
-        #print("token buffer:[ ",end="")
-        #for i in range(2+words*4):
-        #    print(f"{self.zm.read_byte(token_buf + i):02x} ",end="")
-        #print("]")
-        #print("buff:",buff)
-
     def op_sread(self, operands):
         """Read string from user"""
         self.zm.print_debug(3,f"op_sread() {operands}")
@@ -1591,9 +1585,7 @@ class ZProcessor:
             self.zm.print_error("Attempted to write outside of data area")
             sys.exit()
         self.zm.write_word(addr2, value)
-
         #self.zm.write_byte(operands[0]+2*operands[1],operands[2])
-
 
     def op_storeb(self, operands):
         """Store a byte """
@@ -1654,9 +1646,6 @@ class ZProcessor:
         self.zm.print_debug(3,f"stack size: {len(self.zm.call_stack[-1].data_stack)}")
         var = operands[0]
 
-        #not sure of this logic but it works:
-        #if len(operands) > 1:
-        #    self.zm.pc += 1
         value = self.zm.call_stack[-1].data_stack.pop()
         self.write_variable(operands[0],value)
         return
@@ -1693,10 +1682,6 @@ class ZProcessor:
         sys.exit()
 
     def op_save(self, operands):
-        # future work: allow filename choice
-        #self.store_result(self.zm.save_game())
-        #for i in range(len(self.zm.call_stack)):
-        #    self.zm.call_stack[i].print(3)
         value = self.zm.save_game()
         self.zm.print_debug(3,f"pc: 0x{self.zm.pc:04x}")
         self.print_frame_stack()
@@ -1704,7 +1689,6 @@ class ZProcessor:
         return value == True
 
     def op_restore(self, operands):
-        # future work: allow filename choice
         value = self.zm.restore_game()
         self.branch(value)
         return value
