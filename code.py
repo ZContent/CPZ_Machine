@@ -497,11 +497,11 @@ class ZMachine:
 
     def get_save_game_name(self):
         """get filename to save/restore"""
-        self.print_text(f"Filename (default: {self.save_game_name}):")
-        name = self.get_input()
-        if len(name) > 0:
-            self.save_game_name = name
-        return self.save_game_name
+        self.print_text(f"Enter file name ({self.save_game_name}):")
+        name = self.get_input().lower().strip()
+        if len(name) == 0:
+            name = self.save_game_name
+        return name
 
     def restore_game(self):
         """Restore game state"""
@@ -511,7 +511,9 @@ class ZMachine:
             save_path = f"{SAVE_DIR}/{save_name}.sav"
             self.print_debug(3,f"save path: {save_path}")
             if not self.does_file_exist(save_path):
-                raise RuntimeError(f"Save file not found: {save_name}")
+                raise RuntimeError(f"save file not found: {save}")
+            # file name exists, ok to save the name
+            self.save_game_name = save
             with open(save_path, 'rb') as f:
                 # Read header
                 magic = f.read(4)
@@ -584,6 +586,28 @@ class ZMachine:
 
         except Exception as e:
             self.print_error(f"Save failed: {e}")
+            return False
+
+    def restart_game(self):
+        try:
+            story_path = f"{STORY_DIR}/{self.filename}"
+            sp = os.stat(story_path)
+            if not sp[0]:
+                raise RuntimeError(f"Story file not found: {filename}")
+            # Check file size
+            stat = os.stat(story_path)
+            if stat[6] > MAX_STORY_SIZE:
+                raise ValueError(f"Story file too large: {stat[6]} bytes")
+
+            # Read dynamic memory
+            with open(story_path, 'rb') as f:
+                mem_size = self.read_word(0x0e)
+                self.memory[0:mem_size] = f.read(mem_size)
+                self.pc = self.read_word(0x06)  # Initial PC
+            self.processor.init_frame()
+            return True
+        except Exception as e:
+            self.print_error(f"Restart failed: {e}")
             return False
 
     def change_theme(self, theme_name):

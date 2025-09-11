@@ -1694,4 +1694,5 @@ class ZProcessor:
         return value
 
     def op_restart(self, operands):
-        print_line("op_restart() not yet supported")
+        return self.zm.restart_game()
+
