@@ -172,6 +172,7 @@ class ZProcessor:
             0x85: [self.op_inc,"op_inc"],        # inc
             0x86: [self.op_dec,"op_dec"],        # dec
             0x87: [self.op_print_addr,"op_print_addr"], # print_addr
+            0x89: [self.op_remove_obj,"op_remove_obj"], # remove object
             0x8A: [self.op_print_obj,"op_print_obj"], # print_obj
             0x8B: [self.op_ret,"op_ret"],        # ret
             0x8C: [self.op_jump,"op_jump"],       # jump
@@ -510,7 +511,7 @@ class ZProcessor:
         self.zm.print_debug(3,"write_obj() done")
 
     """
-    Remove an object by unlinking from the its parent object and from its
+    Remove an object by unlinking from its parent object and from its
     siblings.
     """
     def remove_object(self, obj):
@@ -1660,6 +1661,11 @@ class ZProcessor:
 
         self.write_variable(var,value)
         return
+
+    def op_remove_obj(self, operands):
+        obj = operands[0]
+        # Remove object 1 from parent
+        self.remove_object(obj)
 
     def op_print_obj(self, operands):
         obj = operands[0]
