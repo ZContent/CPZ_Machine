@@ -70,53 +70,43 @@ CHAR_HEIGHT = 16
 TEXT_COLS = DISPLAY_WIDTH // CHAR_WIDTH    # 80 columns
 TEXT_ROWS = DISPLAY_HEIGHT // CHAR_HEIGHT  # 30 rows
 
-# Color themes (expanded from A2Z Machine)
-THEMES = {
-    'default': {
-        'bg': 0x000000,      # Black
-        'text': 0xFFFFFF,    # White
-        'status': 0x00FF00,  # Green
-        'input': 0xFFFF00,   # Yellow
-        'error': 0xFF0000    # Red
-    },
-    'amiga': {
-        'bg': 0x000040,      # Dark blue
-        'text': 0xFFFFFF,    # White
-        'status': 0x0080FF,  # Light blue
-        'input': 0xFFFF00,   # Yellow
-        'error': 0xFF4040    # Light red
-    },
-    'compaq': {
-        'bg': 0x000000,      # Black
-        'text': 0x00FF00,    # Green
-        'status': 0x80FF80,  # Light green
-        'input': 0xFFFF00,   # Yellow
-        'error': 0xFF8080    # Light red
-    },
-    'c64': {
-        'bg': 0x4040E0,      # C64 blue
-        'text': 0xA0A0FF,    # Light blue
-        'status': 0xFFFFFF,  # White
-        'input': 0xFFFF40,   # Light yellow
-        'error': 0xFF4040    # Light red
-    },
-    'amber': {
-        'bg': 0x000000,      # Black
-        'text': 0xFFB000,    # Amber
-        'status': 0xFFF000,  # Bright yellow
-        'input': 0xFFFFFF,   # White
-        'error': 0xFF4000    # Orange-red
-    }
-}
-
 class ZMachine:
+# Color themes (expanded from A2Z Machine)
     THEMES = {
         'default': {
             'bg': 0x000000,      # Black
             'text': 0xFFFFFF,    # White
-            'status': 0x00FF00,  # Green
+            'status': 0xFFFFFF,  # White
             'input': 0xFFFF00,   # Yellow
             'error': 0xFF0000    # Red
+        },
+        'amiga': {
+            'bg': 0x000040,      # Dark blue
+            'text': 0xFFFFFF,    # White
+            'status': 0x0080FF,  # Light blue
+            'input': 0xFFFF00,   # Yellow
+            'error': 0xFF4040    # Light red
+        },
+        'compaq': {
+            'bg': 0x000000,      # Black
+            'text': 0x00FF00,    # Green
+            'status': 0x00FF00,  # Green
+            'input': 0xFFFF00,   # Yellow
+            'error': 0xFF8080    # Light red
+        },
+        'c64': {
+            'bg': 0x4040E0,      # C64 blue
+            'text': 0xA0A0FF,    # Light blue
+            'status': 0xFFFFFF,  # White
+            'input': 0xFFFF40,   # Light yellow
+            'error': 0xFF4040    # Light red
+        },
+        'amber': {
+            'bg': 0x000000,      # Black
+            'text': 0xFFB000,    # Amber
+            'status': 0xFFF000,  # Bright yellow
+            'input': 0xFFFFFF,   # White
+            'error': 0xFF4000    # Orange-red
         }
     }
 
@@ -149,13 +139,13 @@ class ZMachine:
         self.dictionary = {}
         self.dictionary_size = 0
         self.dictionary_offset = 0
-        self.current_theme = 'default'
+        self.current_theme = 'compaq'
         self.display = None
         self.keyboard_handler = None
         self.processor = None
         self.input_buffer = ""
         self.output_buffer = []
-        self.text_buffer = [""] * TEXT_ROWS
+        self.text_buffer = []
         self.cursor_row = 2  # Start below status line
         self.cursor_col = 0
         self.status_line = ""
@@ -165,6 +155,11 @@ class ZMachine:
         self.game_running = False
         self.text_labels = []
         self.line_buff = ""
+        # calculated based on screen size and font size
+        self.screen_width = 0 # deprecated use text_cols
+        self.screen_height = 0 # deprecated use text_rows
+        self.text_cols = 0
+        self.text_rows = 0
 
         # Z-machine header addresses
         self.dictionary_addr = 0
@@ -180,6 +175,8 @@ class ZMachine:
         self.keyboard_handler = ZKeyboardHandler(self)
 
         self.terminal = None
+
+        self.line_count = 0
 
     def init_display(self):
         """Initialize DVI display on Fruit Jam"""
@@ -204,7 +201,7 @@ class ZMachine:
             self.display.root_group = self.main_group
 
             # Create background
-            theme = THEMES[self.current_theme]
+            theme = self.THEMES[self.current_theme]
             bg_bitmap = displayio.Bitmap(DISPLAY_WIDTH, DISPLAY_HEIGHT, 1)
             bg_palette = displayio.Palette(1)
             bg_palette[0] = theme['bg']
@@ -222,37 +219,48 @@ class ZMachine:
 
     def setup_text_display(self):
         """Setup full-screen text display"""
-        theme = THEMES[self.current_theme]
+        theme = self.THEMES[self.current_theme]
 
+        font = FONT
+        font_bb = font.get_bounding_box()
+        # future: allow other fonts
+        #font = OnDiskFont("fonts/cp437_16h.bin")
+        font_bb = font.get_bounding_box()
+
+        self.text_cols = self.display.width // font_bb[0]
+        self.text_rows = self.display.height // font_bb[1]
+        print(f"text display: {self.text_cols} x {self.text_rows}")
+        self.text_buffer = [""] * self.text_rows
         # Status line (row 0)
         self.status_label = label.Label(
             terminalio.FONT,
-            text=" " * TEXT_COLS,
+            text=" " * self.text_cols,
             color=theme['status'],
             x=0, y=8
         )
         self.main_group.append(self.status_label)
 
         # Separator line (row 1)
-        separator_rect = Rect(0, CHAR_HEIGHT, DISPLAY_WIDTH, 1, fill=theme['text'])
+        separator_rect = Rect(0, font_bb[1]+4, DISPLAY_WIDTH, 1, fill=theme['text'])
         self.main_group.append(separator_rect)
 
         main_group = displayio.Group()
         display = supervisor.runtime.display
         #display.root_group = main_group
-        self.terminal = ColorTerminal(FONT, DISPLAY_WIDTH, DISPLAY_HEIGHT)
+        self.terminal = ColorTerminal(font, DISPLAY_WIDTH, DISPLAY_HEIGHT)
 
         # Main text area (rows 2-29)
         self.text_labels = []
-        for i in range(TEXT_ROWS - 2):
+        for i in range(self.text_rows - 2):
             text_label = label.Label(
                 terminalio.FONT,
                 text="",
                 color=theme['text'],
-                x=0, y=(i + 2) * CHAR_HEIGHT + 8
+                x=0, y=(i + 2) * font_bb[1] + 8
             )
             self.main_group.append(text_label)
             self.text_labels.append(text_label)
+
 
     def init_keyboard(self):
         """Initialize USB keyboard input"""
@@ -313,8 +321,8 @@ class ZMachine:
             self.init_objects()
             self.init_dictionary()
 
-            self.print_text(f"Loaded {filename} (Z{self.z_version})\n")
-            self.print_text(f"Story size: {len(self.story_data)} bytes\n")
+            self.print_text(f"Loaded {filename} (Z{self.z_version})")
+            self.print_text(f"Story size: {len(self.story_data)} bytes")
             self.print_text("\n")
             self.filename = filename
             return True
@@ -394,37 +402,35 @@ class ZMachine:
                 self.read_byte(self.dictionary_addr + 1 + i)
             )
 
-    # future work needed
     def print_text(self, text):
         """Print text to display"""
         if not text:
             return
-        print(text,end="")
-        return
-        self.terminal.write(text)
-        self.line_buff += text
-        if self.line_buff[-1] == '\n':
-            # print line
-            print(self.line_buff, end='')
-            lines = self.line_buff.split('\n')
-            self.line_buff = ""
-            """
-            for line in lines:
-                # Word wrap if necessary
-                while len(line) > TEXT_COLS:
-                    # Find last space within column limit
-                    break_pos = TEXT_COLS
-                    for i in range(TEXT_COLS - 1, 0, -1):
-                        if line[i] == ' ':
-                            break_pos = i
-                            break
+        theme = self.THEMES[self.current_theme]
+        lines = text.split('\n')
+        for line in lines:
+            # Word wrap if necessary
+            while len(line) > self.text_cols:
+                # Find last space within column limit
+                break_pos = self.text_cols
+                for i in range(self.text_cols - 1, 0, -1):
+                    if line[i] == ' ':
+                        break_pos = i
+                        break
 
-                    self.add_text_line(line[:break_pos])
-                    line = line[break_pos:].lstrip()
+                self.add_text_line(line[:break_pos])
+                line = line[break_pos:].lstrip()
 
-                if line or not self.text_buffer[self.cursor_row]:
-                    self.add_text_line(line)
-            """
+            if line or not self.text_buffer[self.cursor_row]:
+                self.add_text_line(line)
+
+    def append_text_to_line(self, line):
+        """ append text to cursor line"""
+        self.cursor_row += line
+
+    def remove_text_from_line(self, count = 1):
+        for i in range(count):
+            self.cursor_row = self.cursor_row[:-1]
 
     def add_text_line(self, line):
         """Add a line of text to the display"""
@@ -440,6 +446,25 @@ class ZMachine:
         self.cursor_row += 1
         self.cursor_col = 0
 
+    def goto(self, row, column):
+        return f"\x1B[{int(row)};{int(column)}H"
+
+    # Routine cls - clear screen
+    def cls(self):
+        print("\x1B[2J")
+        print(self.goto(1, 1))
+
+    def print_status(self, line):
+        move_cursor = self.goto(1,1)
+        #move_cursor = chr(27) + "[10;10H"
+        green = chr(27) + "[32m"
+        rgreen = chr(27) + "[30m;42m"
+
+        print(f"{move_cursor}",end="")
+        self.processor.op_print_obj([self.processor.read_variable( 16 )])
+        # move cursor to bottom of display
+        move_cursor = self.goto(display.row, 2)
+
     def print_debug(self, level, msg):
         if self.debug >= level :
             print(f"debug:{msg}")
@@ -450,7 +475,7 @@ class ZMachine:
         print(f"*** ERROR: {error_msg}")
         return
         #end debug
-        theme = THEMES[self.current_theme]
+        theme = self.THEMES[self.current_theme]
         # Change text color temporarily
         current_color = self.text_labels[0].color
         if self.cursor_row < len(self.text_labels):
@@ -465,7 +490,7 @@ class ZMachine:
 
     def update_status_line(self, location="", score="", moves=""):
         """Update the status line"""
-        theme = THEMES[self.current_theme]
+        theme = self.THEMES[self.current_theme]
 
         if self.z_version <= 3:
             # Score/moves format
@@ -475,14 +500,31 @@ class ZMachine:
             status_text = f" {location:<50} {score:>10} "
 
         # Pad or truncate to exact width
-        status_text = status_text[:TEXT_COLS].ljust(TEXT_COLS)
+        status_text = status_text[:TEXT_COLS]  #.ljust(TEXT_COLS)
         self.status_label.text = status_text
 
     def get_input(self):
         """Get input from keyboard handler"""
         if self.keyboard_handler:
             #return input()
-            return self.keyboard_handler.get_input_line()
+            user_input = ""
+            #print(f"cursor row: {self.cursor_row}, count: {len(self.text_buffer)}, label count: {len(self.text_labels)}")
+            while True:
+                key = sys.stdin.read(1)
+                #self.text_labels[self.cursor_row].text += key
+                #self.keyboard_handler.handle_keypress(key)
+                if ord(key) == 10:
+                    break
+                if ord(key) == 8: # backspace
+                    user_input = user_input[:-1] # remove last character
+                    self.text_buffer[self.cursor_row-1] = self.text_buffer[self.cursor_row-1][:-1]
+                    self.text_labels[self.cursor_row-1].text = self.text_buffer[self.cursor_row-1]
+                else:
+                    user_input += key
+                    self.text_buffer[self.cursor_row-1] += key
+                    self.text_labels[self.cursor_row-1].text = self.text_buffer[self.cursor_row-1]
+            #return self.keyboard_handler.get_input_line()
+            return user_input
         else:
             #print("> ", end="")
             return input().strip().lower()
@@ -542,7 +584,7 @@ class ZMachine:
                     self.call_stack.append(frame)
                 self.processor.print_frame_stack()
 
-            self.print_text(f"Game restored from {save}\n")
+            self.print_text(f"Game restored from {save}")
             #self.zm.pc = self.call_stack[-1].return_pointer
             return True
 
@@ -581,7 +623,7 @@ class ZMachine:
                     #print(f"frame size: {len(data)}")
                     f.write(len(data).to_bytes(2, 'big'))
                     f.write(data)
-            self.print_text(f"Game saved as {save}\n")
+            self.print_text(f"Game saved as {save}")
             return True
 
         except Exception as e:
@@ -612,12 +654,12 @@ class ZMachine:
 
     def change_theme(self, theme_name):
         """Change color theme"""
-        if theme_name in THEMES:
+        if theme_name in self.THEMES:
             self.current_theme = theme_name
             self.setup_text_display()  # Refresh display with new colors
-            self.print_text(f"Theme changed to: {theme_name}\n")
+            self.print_text(f"Theme changed to: {theme_name}")
         else:
-            self.print_error(f"Unknown theme: {theme_name}\n")
+            self.print_error(f"Unknown theme: {theme_name}")
 
     def list_stories(self):
         """List available story files"""
@@ -626,12 +668,12 @@ class ZMachine:
             story_files = [f for f in files if f.lower().endswith(('.z3', '.z5', '.z8', '.dat'))]
 
             if not story_files:
-                self.print_text("No story files found.\n")
-                self.print_text(f"Copy story files to {STORY_DIR}/\n")
+                self.print_text("No story files found.")
+                self.print_text(f"Copy story files to {STORY_DIR}/")
             else:
-                self.print_text("Available stories:\n")
+                self.print_text("Available stories:")
                 for i, filename in enumerate(story_files, 1):
-                    self.print_text(f"  {i}. {filename}\n")
+                    self.print_text(f"  {i}. {filename}")
 
             return story_files
 
@@ -642,8 +684,8 @@ class ZMachine:
     def run_interpreter(self):
         """Main Z-machine interpreter loop"""
         self.game_running = True
-        self.print_text("CircuitPython Z-Machine Interpreter\n")
-        self.print_text("Based on A2Z Machine by Dan Cogliano\n")
+        self.print_text("CircuitPython Z-Machine Interpreter")
+        self.print_text("Based on A2Z Machine by Dan Cogliano")
         self.print_text("=" * 50)
         self.print_text("\n")
         # List available stories
@@ -654,9 +696,10 @@ class ZMachine:
         # For demo, load first story automatically
         if stories:
             if self.load_story(stories[0]):
-                self.print_text("Game loaded successfully!\n")
-                self.print_text("Type 'help' for interpreter commands\n")
-                self.print_text("\n")
+                self.print_text("Game loaded successfully!")
+                self.print_text("Type 'help' for interpreter commands")
+                #for i in range(self.screen_height):
+                #    self.print_text("\n")
 
                 # Start Z-machine execution
                 self.execute_game()
@@ -701,8 +744,8 @@ class ZMachine:
                     theme_name = cmd[6:]
                     self.change_theme(theme_name)
                 elif cmd == 'themes':
-                    self.print_text("Available themes:\n")
-                    for theme in THEMES.keys():
+                    self.print_text("Available themes:")
+                    for theme in self.THEMES.keys():
                         self.print_text(f"  {theme}")
                 elif cmd == 'help':
                     self.show_help()

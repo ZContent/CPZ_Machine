@@ -44,6 +44,9 @@ v3_lookup_table = [
 h_words_offset = 8
 h_type = 3
 
+config_time = 0x02
+h_config = 1
+
 if h_type < 4:
     address_scaler = 2;
     story_shift = 1;
@@ -148,6 +151,7 @@ class ZProcessor:
     def __init__(self, zmachine):
         self.zm = zmachine
         self.instruction_count = 0
+        self.line_buff = ""
         # Opcode dispatch table (simplified set for basic functionality)
         self.opcodes = {
             # 0OP opcodes
@@ -307,6 +311,13 @@ class ZProcessor:
                 break
 
         return types
+
+    def write_to_line(self, text, flush = False):
+        self.line_buff += text
+        #print(f"{ord(self.line_buff[-1])}")
+        if ord(self.line_buff[-1]) == 10 or flush:
+            self.zm.print_text(self.line_buff)
+            self.line_buff = ""
 
     def print_frame(self, frame, i = "0"):
         self.zm.print_debug(3,f"## frame {i} ##")
@@ -594,7 +605,7 @@ class ZProcessor:
     def op_print(self,operands):
         """Print literal string"""
         text = self.decode_string(self.zm.pc)
-        self.zm.print_text(text)
+        self.write_to_line(text)
         self.zm.print_debug(3,f"op_string: '{text}'")
         # Skip over the string
         self.zm.pc = self.skip_string(self.zm.pc)
@@ -602,7 +613,7 @@ class ZProcessor:
     def op_print_ret(self, operands):
         """Print literal string and return true"""
         self.op_print(operands)
-        self.zm.print_text("\n")
+        self.write_to_line("\n")
         self.op_rtrue(operands)
 
     def op_ret_popped(self, operands):
@@ -619,7 +630,7 @@ class ZProcessor:
 
     def op_new_line(self, operands):
         """Print newline"""
-        self.zm.print_text("\n")
+        self.write_to_line("\n")
 
     def op_jz(self, operands):
         #self.print_frame(self.zm.call_stack[-1],"op_jz")
@@ -682,20 +693,21 @@ class ZProcessor:
         """Print character"""
         if operands:
             char = chr(operands[0]) if 32 <= operands[0] <= 126 else '?'
-            self.zm.print_text(char)
+            self.write_to_line(char)
 
     def op_print_num(self, operands):
         """Print number"""
         if operands:
             # Convert to signed
             num = operands[0] if operands[0] < 32768 else operands[0] - 65536
-            self.zm.print_text(str(num))
+            self.write_to_line(str(num))
 
     # Format and output the status line for type 3 games only.
     def show_status(self):
-        # more work is needed, just show location name for now
-        if self.read_variable(16) != 0 :
-            self.op_print_obj([self.read_variable( 16 )])
+        location = self.get_object_name(self.read_variable( 16 ))
+        score = self.read_variable( 17 )
+        moves = self.read_variable( 18 )
+        self.zm.update_status_line(location, score, moves)
 
     """
     Search the dictionary for a word. Just encode the word and binary chop the
@@ -871,12 +883,11 @@ class ZProcessor:
 
             # Refresh status line
             if h_type < 4:
-                pass
-                # not yet, waiting on curses
-                #self.show_status()
+                self.show_status()
 
             # Reset line count
             self.zm.lines_written = 0
+            self.write_to_line("", True) # show prompt
 
             # Initialise character pointer and initial read size
 
@@ -950,9 +961,9 @@ class ZProcessor:
     def write_zchar(self, c):
         c = c & 0xff
         if ord(" ") <= c and c <= ord("~"):
-            self.zm.print_text(chr(c))
+            self.write_to_line(chr(c))
         elif c == 13:
-            self.zm.print_text("\r")
+            self.write_to_line("\r")
         # don't care about other characters at this time
 
     def encode_string(self, len, s):
@@ -1240,7 +1251,7 @@ class ZProcessor:
     def op_print_addr(self, operands):
         address = abs(operands[0])
         text = self.decode_string(address)
-        self.zm.print_text(text)
+        self.write_to_line(text)
 
     def op_ret(self, operands):
         """Return from subroutine. Restore FP and PC from stack"""
@@ -1258,7 +1269,7 @@ class ZProcessor:
     def op_print_paddr(self, operands):
         address = abs(operands[0]) * address_scaler
         text = self.decode_string(address)
-        self.zm.print_text(text)
+        self.write_to_line(text)
 
     def op_not(self, operands):
         result = ~operands[0]
@@ -1681,7 +1692,7 @@ class ZProcessor:
 
         # Decode and output text at address
         text = self.decode_string( address )
-        self.zm.print_text(text)
+        self.write_to_line(text)
 
     def op_call_2s(self, operands):
         print_line("op_call_2s() not yet supported")

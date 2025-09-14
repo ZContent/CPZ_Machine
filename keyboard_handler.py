@@ -8,6 +8,7 @@ the serial input used in the original A2Z Machine.
 
 import usb_hid
 import time
+import sys
 from adafruit_hid.keyboard import Keyboard
 from adafruit_hid.keycode import Keycode
 
@@ -243,7 +244,18 @@ class ZKeyboardHandler:
             try:
                 # This is a placeholder - real implementation would need
                 # proper USB HID event handling
-                user_input = input(self.prompt).strip()
+                user_input = ""
+                while True:
+                    key = sys.stdin.read(1)
+                    print(ord(key))
+                    if ord(key) == 10:
+                        break
+                    if ord(key) == 8: # backspace
+                        user_input = user_input[:-1] # remove last character
+                    else:
+                        user_input += key
+
+                #user_input = input(self.prompt).strip()
 
                 if user_input:
                     self.history.append(user_input)
