@@ -727,12 +727,13 @@ class ZMachine:
         while i < 0 or i > len(story_files):
             self.print_text("\n")
             self.print_text(">")
-            i = int(self.get_input())
-            if i == 0:
-                return
-            if i < 0 or i > len(story_files):
-
-                self.print_error(f"Invalid input, select between 1 and {len(story_files)}")
+            str = self.get_input()
+            if len(str) > 0:
+                i = int(str)
+                if len(str) > 0 and i == 0:
+                    return
+                if i < 0 or i > len(story_files):
+                    self.print_error(f"Invalid input, select between 1 and {len(story_files)}")
         return i
 
     def run_interpreter(self):
@@ -751,13 +752,13 @@ class ZMachine:
         # For demo, load first story automatically
         if stories:
             story = self.get_story()
+            if story > 0:
+                if self.load_story(stories[story-1]):
+                    self.print_text("Game loaded successfully!")
+                    self.print_text("Type 'help' for interpreter commands")
 
-            if story > 0 and self.load_story(stories[story]):
-                self.print_text("Game loaded successfully!")
-                self.print_text("Type 'help' for interpreter commands")
-
-                # Start Z-machine execution
-                self.execute_game()
+                    # Start Z-machine execution
+                    self.execute_game()
 
     def execute_game(self):
         """Execute Z-machine instructions"""
