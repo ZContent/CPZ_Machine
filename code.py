@@ -8,7 +8,7 @@ Hardware Requirements:
 - HDMI cable connected to built-in DVI port
 
 Features:
-- Support for Z-machine versions 3, 5, and 8
+- Support for Z-machine version 3
 - Multiple color themes (Default, Amiga, Compaq, C64, etc.)
 - Full screen text display via DVI/HDMI
 - Save/restore game functionality
@@ -515,31 +515,47 @@ class ZMachine:
         self.status_label.text = status_text
         self.status_label.text = status_text
 
+    def show_themes(self):
+        self.print_text("Available themes:")
+        for theme in self.THEMES.keys():
+            self.print_text(f"  {theme}")
+
     def get_input(self):
         """Get input from keyboard handler"""
-        if self.keyboard_handler:
-            #return input()
-            user_input = ""
-            #print(f"cursor row: {self.cursor_row}, count: {len(self.text_buffer)}, label count: {len(self.text_labels)}")
-            while True:
-                key = sys.stdin.read(1)
-                #self.text_labels[self.cursor_row].text += key
-                #self.keyboard_handler.handle_keypress(key)
-                if ord(key) == 10:
-                    break
-                if ord(key) == 8: # backspace
-                    user_input = user_input[:-1] # remove last character
-                    self.text_buffer[self.cursor_row-1] = self.text_buffer[self.cursor_row-1][:-1]
-                    self.text_labels[self.cursor_row-1].text = self.text_buffer[self.cursor_row-1]
+        while True:
+            if self.keyboard_handler:
+                #return input()
+                user_input = ""
+                #print(f"cursor row: {self.cursor_row}, count: {len(self.text_buffer)}, label count: {len(self.text_labels)}")
+                while True:
+                    key = sys.stdin.read(1)
+                    #self.text_labels[self.cursor_row].text += key
+                    #self.keyboard_handler.handle_keypress(key)
+                    if ord(key) == 10:
+                        break
+                    if ord(key) == 8: # backspace
+                        user_input = user_input[:-1] # remove last character
+                        self.text_buffer[self.cursor_row-1] = self.text_buffer[self.cursor_row-1][:-1]
+                        self.text_labels[self.cursor_row-1].text = self.text_buffer[self.cursor_row-1]
+                    else:
+                        user_input += key
+                        self.text_buffer[self.cursor_row-1] += key
+                        self.text_labels[self.cursor_row-1].text = self.text_buffer[self.cursor_row-1]
+                #return self.keyboard_handler.get_input_line()
+                return user_input
+            else:
+                #print("> ", end="")
+                cmd = input().strip().lower()
+                if cmd == 'help':
+                    self.show_help()
+                elif cmd.startswith('theme '):
+                    theme_name = cmd[6:]
+                    self.change_theme(theme_name)
+                elif cmd == 'themes':
+                    self.show_themes()
                 else:
-                    user_input += key
-                    self.text_buffer[self.cursor_row-1] += key
-                    self.text_labels[self.cursor_row-1].text = self.text_buffer[self.cursor_row-1]
-            #return self.keyboard_handler.get_input_line()
-            return user_input
-        else:
-            #print("> ", end="")
-            return input().strip().lower()
+                    break;
+        return cmd
 
     def does_file_exist(self, filename):
         try:
@@ -673,11 +689,20 @@ class ZMachine:
         else:
             self.print_error(f"Unknown theme: {theme_name}")
 
-    def list_stories(self):
-        """List available story files"""
+    def get_stories(self):
         try:
             files = os.listdir(STORY_DIR)
             story_files = [f for f in files if f.lower().endswith(('.z3', '.z5', '.z8', '.dat'))]
+            story_files = sorted(story_files)
+            return story_files
+        except Exception as e:
+            self.print_error(f"Error geting stories: {e}\n")
+            return []
+
+    def list_stories(self):
+        """List available story files"""
+        try:
+            story_files = self.get_stories()
 
             if not story_files:
                 self.print_text("No story files found.")
@@ -686,7 +711,6 @@ class ZMachine:
                 self.print_text("Available stories:")
                 for i, filename in enumerate(story_files, 1):
                     self.print_text(f"  {i}. {filename}")
-
             return story_files
 
         except Exception as e:
@@ -694,20 +718,22 @@ class ZMachine:
             return []
 
     def get_story(self):
-        files = os.listdir(STORY_DIR)
-        story_files = [f for f in files if f.lower().endswith(('.z3', '.z5', '.z8', '.dat'))]
+        story_files = self.get_stories()
         if len(story_files) == 1:
             # only one story available, no need to prompt for one
             return 0
+        self.print_text("Select a story # or enter 0 to cancel")
         i = -1
-        while i <= 0 or i > len(story_files):
+        while i < 0 or i > len(story_files):
             self.print_text("\n")
             self.print_text(">")
             i = int(self.get_input())
-            if i <= 0 or i > len(story_files):
+            if i == 0:
+                return
+            if i < 0 or i > len(story_files):
 
                 self.print_error(f"Invalid input, select between 1 and {len(story_files)}")
-        return i - 1
+        return i
 
     def run_interpreter(self):
         """Main Z-machine interpreter loop"""
@@ -724,11 +750,11 @@ class ZMachine:
 
         # For demo, load first story automatically
         if stories:
-            if self.load_story(stories[self.get_story()]):
+            story = self.get_story()
+
+            if story > 0 and self.load_story(stories[story]):
                 self.print_text("Game loaded successfully!")
                 self.print_text("Type 'help' for interpreter commands")
-                #for i in range(self.screen_height):
-                #    self.print_text("\n")
 
                 # Start Z-machine execution
                 self.execute_game()
@@ -794,6 +820,7 @@ class ZMachine:
         self.print_text("  help     - Show this help")
         self.print_text("  save     - Save current game")
         self.print_text("  restore  - Restore saved game")
+        self.print_text("  restart  - Restore saved game")
         self.print_text("  themes   - List available themes")
         self.print_text("  theme <name> - Change color theme")
         self.print_text("  quit     - Exit interpreter")
