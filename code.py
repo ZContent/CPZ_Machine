@@ -260,7 +260,7 @@ class ZMachine:
                 font, # terminalio.FONT,
                 text="",
                 color=theme['text'],
-                x=0, y=i * self.font_bb[1] + self.font_bb[1]
+                x=0, y=i * self.font_bb[1] + self.font_bb[1]*2
             )
             self.main_group.append(text_label)
             self.text_labels.append(text_label)
@@ -458,9 +458,9 @@ class ZMachine:
             self.scrolling = True
         if self.scrolling:
             # Scroll up
-            for i in range(0,len(self.text_labels)):
+            for i in range(len(self.text_labels)-1):
                 self.text_labels[i].y -= self.font_bb[1]
-                if self.text_labels[i].y < self.font_bb[1]:
+                if self.text_labels[i].y < self.font_bb[1]*2:
                     self.text_labels[i].y = self.text_rows * self.font_bb[1]
                     self.text_buffer[i] = ""
                     self.text_labels[i].text = ""
