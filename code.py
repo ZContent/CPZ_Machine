@@ -226,7 +226,7 @@ class ZMachine:
         """Setup full-screen text display"""
         theme = self.THEMES[self.current_theme]
 
-        font = FONT
+        font = terminalio.FONT
         #font = OnDiskFont("fonts/cp437_16h.bin")
 
         self.font_bb = font.get_bounding_box()
@@ -458,18 +458,13 @@ class ZMachine:
             self.scrolling = True
         if self.scrolling:
             # Scroll up
-            for i in range(len(self.text_labels)-1):
+            for i in range(len(self.text_labels)):
                 self.text_labels[i].y -= self.font_bb[1]
                 if self.text_labels[i].y < self.font_bb[1]*2:
                     self.text_labels[i].y = self.text_rows * self.font_bb[1]
                     self.text_buffer[i] = ""
                     self.text_labels[i].text = ""
-                print(f"{i}: {self.text_labels[i].y}")
-                #print(f"label {i} set to {self.text_labels[i].y} {cursor}")
-            #for i in range(len(self.text_labels) - 1):
-            #    self.text_buffer[i] = self.text_buffer[i + 1]
-            #    self.text_labels[i].text = self.text_buffer[i]
-            #self.cursor_row = len(self.text_labels) - 1
+                #print(f"{i}: {self.text_labels[i].y}")
 
         self.text_buffer[self.cursor_row] = line
         self.text_labels[self.cursor_row].text = line
@@ -482,10 +477,10 @@ class ZMachine:
 
     def print_error(self, error_msg):
         """Print error message in error color"""
-        #debug
-        print(f"*** ERROR: {error_msg}")
+
+        self.print_text(f"*** ERROR: {error_msg}")
         return
-        #end debug
+        # future???
         theme = self.THEMES[self.current_theme]
         # Change text color temporarily
         current_color = self.text_labels[0].color
@@ -694,6 +689,22 @@ class ZMachine:
             self.print_error(f"Error listing stories: {e}\n")
             return []
 
+    def get_story(self):
+        files = os.listdir(STORY_DIR)
+        story_files = [f for f in files if f.lower().endswith(('.z3', '.z5', '.z8', '.dat'))]
+        if len(story_files) == 1:
+            # only one story available, no need to prompt for one
+            return 0
+        i = -1
+        while i <= 0 or i > len(story_files):
+            self.print_text("\n")
+            self.print_text(">")
+            i = int(self.get_input())
+            if i <= 0 or i > len(story_files):
+
+                self.print_error(f"Invalid input, select between 1 and {len(story_files)}")
+        return i - 1
+
     def run_interpreter(self):
         """Main Z-machine interpreter loop"""
         self.game_running = True
@@ -709,7 +720,7 @@ class ZMachine:
 
         # For demo, load first story automatically
         if stories:
-            if self.load_story(stories[0]):
+            if self.load_story(stories[self.get_story()]):
                 self.print_text("Game loaded successfully!")
                 self.print_text("Type 'help' for interpreter commands")
                 #for i in range(self.screen_height):
