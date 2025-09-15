@@ -75,19 +75,21 @@ TEXT_ROWS = DISPLAY_HEIGHT // CHAR_HEIGHT  # 30 rows
 class ZMachine:
 # Color themes (expanded from A2Z Machine)
     THEMES = {
-        'default': {
-            'bg': 0x000000,      # Black
-            'text': 0xFFFFFF,    # White
-            'status': 0xFFFFFF,  # White
-            'input': 0xFFFF00,   # Yellow
-            'error': 0xFF0000    # Red
+        'trs80': {
+            'bg': 0x000000,         # Black
+            'text': 0xFFFFFF,       # White
+            'status': 0x000000,     # Black
+            'status_bg': 0xFFFFFF,  # White
+            'input': 0xFFFF00,      # Yellow
+            'error': 0xFF0000       # Red
         },
-        'amiga': {
-            'bg': 0x000040,      # Dark blue
-            'text': 0xFFFFFF,    # White
-            'status': 0x0080FF,  # Light blue
-            'input': 0xFFFF00,   # Yellow
-            'error': 0xFF4040    # Light red
+        'lisa': {
+            'bg': 0xFFFFFF,         # White
+            'text': 0x000000,       # Black
+            'status': 0xFFFFFF,     # White
+            'status_bg': 0x000000,  # Black
+            'input': 0xFFFF00,      # Yellow
+            'error': 0xFF0000       # Red
         },
         'compaq': {
             'bg': 0x000000,         # Black
@@ -97,19 +99,21 @@ class ZMachine:
             'input': 0xFFFF00,      # Yellow
             'error': 0xFF8080       # Light red
         },
-        'c64': {
-            'bg': 0x4040E0,      # C64 blue
-            'text': 0xA0A0FF,    # Light blue
-            'status': 0xFFFFFF,  # White
-            'input': 0xFFFF40,   # Light yellow
-            'error': 0xFF4040    # Light red
+        'amiga': {
+            'bg': 0x4040E0,         # C64 blue
+            'text': 0xA0A0FF,       # Light blue
+            'status': 0x4040E0,     # C64 Blue
+            'status_bg': 0xA0A0FF,  # Light blue
+            'input': 0xFFFF40,      # Light yellow
+            'error': 0xFF4040       # Light red
         },
         'amber': {
-            'bg': 0x000000,      # Black
-            'text': 0xFFB000,    # Amber
-            'status': 0xFFF000,  # Bright yellow
-            'input': 0xFFFFFF,   # White
-            'error': 0xFF4000    # Orange-red
+            'bg': 0x000000,         # Black
+            'text': 0xFFB000,       # Amber
+            'status': 0x000000,     # Black
+            'status_bg': 0xFFB000,  # Amber
+            'input': 0xFFFFFF,      # White
+            'error': 0xFF4000       # Orange-red
         }
     }
 
