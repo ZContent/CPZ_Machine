@@ -32,7 +32,8 @@ import gc
 import time
 import usb_hid
 
-from adafruit_display_text import label
+#from adafruit_display_text import label
+from adafruit_display_text import bitmap_label
 from adafruit_display_shapes.rect import Rect
 from adafruit_hid.keyboard import Keyboard
 from adafruit_hid.keycode import Keycode
@@ -48,6 +49,7 @@ import gc
 import supervisor
 import displayio
 from lvfontio import OnDiskFont
+from adafruit_bitmap_font import bitmap_font
 from adafruit_fruitjam.peripherals import request_display_config
 from adafruit_color_terminal import ColorTerminal
 # Import our custom modules
@@ -88,11 +90,12 @@ class ZMachine:
             'error': 0xFF4040    # Light red
         },
         'compaq': {
-            'bg': 0x000000,      # Black
-            'text': 0x00FF00,    # Green
-            'status': 0x00FF00,  # Green
-            'input': 0xFFFF00,   # Yellow
-            'error': 0xFF8080    # Light red
+            'bg': 0x000000,         # Black
+            'text': 0x00FF00,       # Green
+            'status': 0x000000,     # Black
+            'status_bg': 0x00FF00,  #Green
+            'input': 0xFFFF00,      # Yellow
+            'error': 0xFF8080       # Light red
         },
         'c64': {
             'bg': 0x4040E0,      # C64 blue
@@ -147,12 +150,14 @@ class ZMachine:
         self.output_buffer = []
         self.text_buffer = []
         self.cursor_row = 2  # Start below status line
+        self.scrolling = False
         self.cursor_col = 0
         self.status_line = ""
         self.lines_written = 0
         self.z_version = 0
         self.current_opcode = None # for stack trace (future)
         self.game_running = False
+        self.font_bb = []
         self.text_labels = []
         self.line_buff = ""
         # calculated based on screen size and font size
@@ -222,27 +227,26 @@ class ZMachine:
         theme = self.THEMES[self.current_theme]
 
         font = FONT
-        font_bb = font.get_bounding_box()
-        # future: allow other fonts
         #font = OnDiskFont("fonts/cp437_16h.bin")
-        font_bb = font.get_bounding_box()
 
-        self.text_cols = self.display.width // font_bb[0]
-        self.text_rows = self.display.height // font_bb[1]
+        self.font_bb = font.get_bounding_box()
+
+        self.text_cols = self.display.width // self.font_bb[0]
+        self.text_rows = self.display.height // self.font_bb[1]
         print(f"text display: {self.text_cols} x {self.text_rows}")
         self.text_buffer = [""] * self.text_rows
         # Status line (row 0)
-        self.status_label = label.Label(
-            terminalio.FONT,
+        self.status_label = bitmap_label.Label(
+            font, # terminalio.FONT,
             text=" " * self.text_cols,
-            color=theme['status'],
-            x=0, y=8
+            color=theme['status'], background_color=theme['status_bg'],
+            x=0, y= self.font_bb[1]
         )
         self.main_group.append(self.status_label)
 
         # Separator line (row 1)
-        separator_rect = Rect(0, font_bb[1]+4, DISPLAY_WIDTH, 1, fill=theme['text'])
-        self.main_group.append(separator_rect)
+        #separator_rect = Rect(0, self.font_bb[1]+4, DISPLAY_WIDTH, 1, fill=theme['text'])
+        #self.main_group.append(separator_rect)
 
         main_group = displayio.Group()
         display = supervisor.runtime.display
@@ -252,11 +256,11 @@ class ZMachine:
         # Main text area (rows 2-29)
         self.text_labels = []
         for i in range(self.text_rows - 2):
-            text_label = label.Label(
-                terminalio.FONT,
+            text_label = bitmap_label.Label(
+                font, # terminalio.FONT,
                 text="",
                 color=theme['text'],
-                x=0, y=(i + 2) * font_bb[1] + 8
+                x=0, y=i * self.font_bb[1] + self.font_bb[1]
             )
             self.main_group.append(text_label)
             self.text_labels.append(text_label)
@@ -432,7 +436,7 @@ class ZMachine:
         for i in range(count):
             self.cursor_row = self.cursor_row[:-1]
 
-    def add_text_line(self, line):
+    def add_text_line_old(self, line):
         """Add a line of text to the display"""
         if self.cursor_row >= len(self.text_labels):
             # Scroll up
@@ -446,24 +450,31 @@ class ZMachine:
         self.cursor_row += 1
         self.cursor_col = 0
 
-    def goto(self, row, column):
-        return f"\x1B[{int(row)};{int(column)}H"
+    def add_text_line(self, line):
+        """Add a line of text to the display"""
+        line = line.replace('\r', '\n')
+        #print(f"cursor: label {self.cursor_row} of {len(self.text_labels)} labels")
+        if self.cursor_row >= len(self.text_labels) - 1:
+            self.scrolling = True
+        if self.scrolling:
+            # Scroll up
+            for i in range(0,len(self.text_labels)):
+                self.text_labels[i].y -= self.font_bb[1]
+                if self.text_labels[i].y < self.font_bb[1]:
+                    self.text_labels[i].y = self.text_rows * self.font_bb[1]
+                    self.text_buffer[i] = ""
+                    self.text_labels[i].text = ""
+                print(f"{i}: {self.text_labels[i].y}")
+                #print(f"label {i} set to {self.text_labels[i].y} {cursor}")
+            #for i in range(len(self.text_labels) - 1):
+            #    self.text_buffer[i] = self.text_buffer[i + 1]
+            #    self.text_labels[i].text = self.text_buffer[i]
+            #self.cursor_row = len(self.text_labels) - 1
 
-    # Routine cls - clear screen
-    def cls(self):
-        print("\x1B[2J")
-        print(self.goto(1, 1))
-
-    def print_status(self, line):
-        move_cursor = self.goto(1,1)
-        #move_cursor = chr(27) + "[10;10H"
-        green = chr(27) + "[32m"
-        rgreen = chr(27) + "[30m;42m"
-
-        print(f"{move_cursor}",end="")
-        self.processor.op_print_obj([self.processor.read_variable( 16 )])
-        # move cursor to bottom of display
-        move_cursor = self.goto(display.row, 2)
+        self.text_buffer[self.cursor_row] = line
+        self.text_labels[self.cursor_row].text = line
+        self.cursor_row = (self.cursor_row + 1) % (len(self.text_labels))
+        self.cursor_col = 0
 
     def print_debug(self, level, msg):
         if self.debug >= level :
@@ -500,7 +511,9 @@ class ZMachine:
             status_text = f" {location:<50} {score:>10} "
 
         # Pad or truncate to exact width
-        status_text = status_text[:TEXT_COLS]  #.ljust(TEXT_COLS)
+        status_text = status_text[:self.text_cols]  #.ljust(TEXT_COLS)
+        status_text += " " * (self.text_cols - len(status_text))
+        self.status_label.text = status_text
         self.status_label.text = status_text
 
     def get_input(self):
@@ -686,6 +699,7 @@ class ZMachine:
         self.game_running = True
         self.print_text("CircuitPython Z-Machine Interpreter")
         self.print_text("Based on A2Z Machine by Dan Cogliano")
+        self.print_text(f"Display: {self.text_cols} cols x {self.text_rows} rows")
         self.print_text("=" * 50)
         self.print_text("\n")
         # List available stories
