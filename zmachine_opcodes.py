@@ -1529,7 +1529,7 @@ class ZProcessor:
                 self.zm.print_error("divide by zero error: Result set to 32767 (0x7fff).") # need better error routine
                 result = 32767;
             else:
-                result = int(a / b) & 0xFFFF
+                result = (a // b) & 0xFFFF
             self.store_result(result)
 
     def op_mod(self, operands):
