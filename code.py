@@ -129,6 +129,7 @@ class ZMachine:
         4 - add loops
         """
         self.debug = 0 # debug level, 0 = no debugging output
+        self.sstimeout = 300 # screen saver timeout, in seconds
         self.filename = ""
         self.save_game_name = "default"
         self.DATA_SIZE = 1024*20
@@ -233,6 +234,7 @@ class ZMachine:
         theme = self.THEMES[self.current_theme]
 
         font = terminalio.FONT
+        #font = OnDiskFont("fonts/en_US.lvfont.bin")
         #font = OnDiskFont("fonts/cp437_16h.bin")
         self.font_bb = font.get_bounding_box()
 
@@ -273,7 +275,7 @@ class ZMachine:
             self.main_group.append(text_label)
             self.text_labels.append(text_label)
         # use for screen saver
-        self.display_saver = Rect(0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT-self.font_bb[1], fill=None)
+        self.display_saver = Rect(0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT, fill=None)
         self.main_group.append(self.display_saver)
 
 
@@ -530,39 +532,53 @@ class ZMachine:
 
     def get_input(self):
         """Get input from keyboard handler"""
+        start_time = time.monotonic()
+        user_input = ""
         while True:
             if self.keyboard_handler:
                 #return input()
-                user_input = ""
+                done = False
                 #print(f"cursor row: {self.cursor_row}, count: {len(self.text_buffer)}, label count: {len(self.text_labels)}")
                 while True:
-                    key = sys.stdin.read(1)
-                    #self.text_labels[self.cursor_row].text += key
-                    #self.keyboard_handler.handle_keypress(key)
-                    if ord(key) == 10:
-                        break
-                    if ord(key) == 8: # backspace
-                        user_input = user_input[:-1] # remove last character
-                        self.text_buffer[self.cursor_row-1] = self.text_buffer[self.cursor_row-1][:-1]
-                        self.text_labels[self.cursor_row-1].text = self.text_buffer[self.cursor_row-1]
-                    else:
-                        user_input += key
-                        self.text_buffer[self.cursor_row-1] += key
-                        self.text_labels[self.cursor_row-1].text = self.text_buffer[self.cursor_row-1]
-                #return self.keyboard_handler.get_input_line()
-                cmd = user_input.strip().lower()
-                if cmd == 'help':
-                    self.show_help()
-                    self.print_text(">")
-                elif cmd.startswith('theme '):
-                    theme_name = cmd[6:]
-                    self.change_theme(theme_name)
-                    self.print_text(">")
-                elif cmd == 'themes':
-                    self.show_themes()
-                    self.print_text(">")
-                else:
-                    break;
+                    #print(time.monotonic() - start_time)
+                    if self.sstimeout and (time.monotonic() - start_time) > self.sstimeout:
+                        #turn on screen saver
+                        self.display_saver.fill=0x000000
+                        # wait for keystroke before turning screen saver off
+                        sys.stdin.read(1)
+                        self.display_saver.fill=None
+                        #reset screen saver timer
+                        start_time = time.monotonic()
+                    if supervisor.runtime.serial_bytes_available:
+                        key = sys.stdin.read(1)
+                        #self.text_labels[self.cursor_row].text += key
+                        #self.keyboard_handler.handle_keypress(key)
+                        if ord(key) == 10:
+                            done = True
+                        elif ord(key) == 8: # backspace
+                            if len(user_input) > 0:
+                                user_input = user_input[:-1] # remove last character
+                                self.text_buffer[self.cursor_row-1] = self.text_buffer[self.cursor_row-1][:-1]
+                                self.text_labels[self.cursor_row-1].text = self.text_buffer[self.cursor_row-1]
+                        else:
+                            user_input += key
+                            self.text_buffer[self.cursor_row-1] += key
+                            self.text_labels[self.cursor_row-1].text = self.text_buffer[self.cursor_row-1]
+                        #return self.keyboard_handler.get_input_line()
+                        if done:
+                            cmd = user_input.strip().lower()
+                            if cmd == 'help':
+                                self.show_help()
+                                self.print_text(">")
+                            elif cmd.startswith('theme '):
+                                theme_name = cmd[6:]
+                                self.change_theme(theme_name)
+                                self.print_text(">")
+                            elif cmd == 'themes':
+                                self.show_themes()
+                                self.print_text(">")
+                            else:
+                                return user_input
         return user_input
 
     def does_file_exist(self, filename):
