@@ -186,6 +186,8 @@ class ZMachine:
         self.terminal = None
 
         self.line_count = 0
+        self.display_background = None
+        self.display_saver = None
 
     def init_display(self):
         """Initialize DVI display on Fruit Jam"""
@@ -232,13 +234,18 @@ class ZMachine:
 
         font = terminalio.FONT
         #font = OnDiskFont("fonts/cp437_16h.bin")
-
         self.font_bb = font.get_bounding_box()
 
         self.text_cols = self.display.width // self.font_bb[0]
         self.text_rows = self.display.height // self.font_bb[1]
         print(f"text display: {self.text_cols} x {self.text_rows}")
         self.text_buffer = [""] * self.text_rows
+        # use for background
+        self.display_background = Rect(0, 0, DISPLAY_WIDTH,
+            DISPLAY_HEIGHT,
+            stroke=0,outline=None,fill=theme['bg'])
+
+        self.main_group.append(self.display_background)
         # Status line (row 0)
         self.status_label = bitmap_label.Label(
             font, # terminalio.FONT,
@@ -248,11 +255,7 @@ class ZMachine:
         )
         self.main_group.append(self.status_label)
 
-        # Separator line (row 1)
-        #separator_rect = Rect(0, self.font_bb[1]+4, DISPLAY_WIDTH, 1, fill=theme['text'])
-        #self.main_group.append(separator_rect)
-
-        main_group = displayio.Group()
+        #main_group = displayio.Group()
         display = supervisor.runtime.display
         #display.root_group = main_group
         self.terminal = ColorTerminal(font, DISPLAY_WIDTH, DISPLAY_HEIGHT)
@@ -264,10 +267,14 @@ class ZMachine:
                 font, # terminalio.FONT,
                 text="",
                 color=theme['text'],
+                background_color=theme['bg'],
                 x=0, y=i * self.font_bb[1] + self.font_bb[1]*2
             )
             self.main_group.append(text_label)
             self.text_labels.append(text_label)
+        # use for screen saver
+        self.display_saver = Rect(0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT-self.font_bb[1], fill=None)
+        self.main_group.append(self.display_saver)
 
 
     def init_keyboard(self):
@@ -414,7 +421,6 @@ class ZMachine:
         """Print text to display"""
         if not text:
             return
-        theme = self.THEMES[self.current_theme]
         lines = text.split('\n')
         for line in lines:
             # Word wrap if necessary
@@ -480,8 +486,9 @@ class ZMachine:
             print(f"debug:{msg}")
 
     def print_error(self, error_msg):
-        """Print error message in error color"""
+        """Print error message on console and screen"""
 
+        print(f"*** ERROR: {error_msg}")
         self.print_text(f"*** ERROR: {error_msg}")
         return
         # future???
@@ -519,6 +526,7 @@ class ZMachine:
         self.print_text("Available themes:")
         for theme in self.THEMES.keys():
             self.print_text(f"  {theme}")
+        self.print_text("\n")
 
     def get_input(self):
         """Get input from keyboard handler"""
@@ -542,20 +550,20 @@ class ZMachine:
                         self.text_buffer[self.cursor_row-1] += key
                         self.text_labels[self.cursor_row-1].text = self.text_buffer[self.cursor_row-1]
                 #return self.keyboard_handler.get_input_line()
-                return user_input
-            else:
-                #print("> ", end="")
-                cmd = input().strip().lower()
+                cmd = user_input.strip().lower()
                 if cmd == 'help':
                     self.show_help()
+                    self.print_text(">")
                 elif cmd.startswith('theme '):
                     theme_name = cmd[6:]
                     self.change_theme(theme_name)
+                    self.print_text(">")
                 elif cmd == 'themes':
                     self.show_themes()
+                    self.print_text(">")
                 else:
                     break;
-        return cmd
+        return user_input
 
     def does_file_exist(self, filename):
         try:
@@ -683,11 +691,19 @@ class ZMachine:
     def change_theme(self, theme_name):
         """Change color theme"""
         if theme_name in self.THEMES:
-            self.current_theme = theme_name
-            self.setup_text_display()  # Refresh display with new colors
-            self.print_text(f"Theme changed to: {theme_name}")
+            theme = self.THEMES[theme_name]
+            self.display_background.fill=theme['bg']
+            self.status_label.color=theme['status']
+            self.status_label.background_color=theme['status_bg']
+
+            for i in range(self.text_rows - 2):
+                self.text_labels[i].color=theme['text']
+                self.text_labels[i].background_color=theme['bg']
+
+            self.print_text(f"Theme changed to: {theme_name}\n")
         else:
-            self.print_error(f"Unknown theme: {theme_name}")
+            self.print_error(f"Unknown theme: {theme_name}\n")
+        self.current_theme = theme_name
 
     def get_stories(self):
         try:
@@ -825,8 +841,7 @@ class ZMachine:
         self.print_text("  themes   - List available themes")
         self.print_text("  theme <name> - Change color theme")
         self.print_text("  quit     - Exit interpreter")
-        self.print_text("")
-        self.print_text("Game commands depend on the loaded story.")
+        self.print_text("Game commands depend on the loaded story.\n")
 
 # Initialize and run the Z-Machine
 def main():
