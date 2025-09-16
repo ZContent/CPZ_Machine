@@ -419,6 +419,10 @@ class ZMachine:
                 self.read_byte(self.dictionary_addr + 1 + i)
             )
 
+    def show_input_prompt(self):
+        """ used by non-machine routines, should match machine prompt """
+        self.print_text(">")
+
     def print_text(self, text):
         """Print text to display"""
         if not text:
@@ -433,11 +437,12 @@ class ZMachine:
                     if line[i] == ' ':
                         break_pos = i
                         break
-
                 self.add_text_line(line[:break_pos])
                 line = line[break_pos:].lstrip()
 
             if line or not self.text_buffer[self.cursor_row]:
+                if len(line) > 0 and ord(line[-1]) == 13:
+                    line = line[:-1]
                 self.add_text_line(line)
 
     def append_text_to_line(self, line):
@@ -569,16 +574,18 @@ class ZMachine:
                             cmd = user_input.strip().lower()
                             if cmd == 'help':
                                 self.show_help()
-                                self.print_text(">")
+                                self.show_input_prompt()
                             elif cmd.startswith('theme '):
                                 theme_name = cmd[6:]
                                 self.change_theme(theme_name)
-                                self.print_text(">")
+                                self.show_input_prompt()
                             elif cmd == 'themes':
                                 self.show_themes()
-                                self.print_text(">")
+                                self.show_input_prompt()
                             else:
+                                self.print_text("\n") # scroll 1 line for CR by user
                                 return user_input
+        self.print_text("\n") # scroll 1 line for CR by user
         return user_input
 
     def does_file_exist(self, filename):
@@ -758,7 +765,7 @@ class ZMachine:
         i = -1
         while i < 0 or i > len(story_files):
             self.print_text("\n")
-            self.print_text(">")
+            self.show_input_prompt()
             str = self.get_input()
             if len(str) > 0:
                 i = int(str)
