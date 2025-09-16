@@ -189,6 +189,7 @@ class ZMachine:
         self.line_count = 0
         self.display_background = None
         self.display_saver = None
+        self.display_cursor = None
 
     def init_display(self):
         """Initialize DVI display on Fruit Jam"""
@@ -274,6 +275,9 @@ class ZMachine:
             )
             self.main_group.append(text_label)
             self.text_labels.append(text_label)
+        # use for cursor
+        self.display_cursor = Rect(0,0,self.font_bb[0],self.font_bb[1],stroke=0,outline=None,fill=theme['text'])
+        self.main_group.append(self.display_cursor)
         # use for screen saver
         self.display_saver = Rect(0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT, fill=None)
         self.main_group.append(self.display_saver)
@@ -422,6 +426,9 @@ class ZMachine:
     def show_input_prompt(self):
         """ used by non-machine routines, should match machine prompt """
         self.print_text(">")
+        self.display_cursor.x = self.font_bb[0]
+        self.display_cursor.y = self.text_labels[self.cursor_row-1].y - self.font_bb[1]//2
+        print(f"cursor at row {self.cursor_row}: {self.display_cursor.x},{self.display_cursor.y}")
 
     def print_text(self, text):
         """Print text to display"""
@@ -447,11 +454,12 @@ class ZMachine:
 
     def append_text_to_line(self, line):
         """ append text to cursor line"""
-        self.cursor_row += line
+        self.text_buffer[self.cursor_row] += line
+        #self.cursor_row += line
 
     def remove_text_from_line(self, count = 1):
         for i in range(count):
-            self.cursor_row = self.cursor_row[:-1]
+            self.text_buffer[self.cursor_row] = self.text_buffer[self.cursor_row][:-1]
 
     def add_text_line_old(self, line):
         """Add a line of text to the display"""
@@ -487,6 +495,10 @@ class ZMachine:
         self.text_labels[self.cursor_row].text = line
         self.cursor_row = (self.cursor_row + 1) % (len(self.text_labels))
         self.cursor_col = 0
+        self.display_cursor.x = len(self.text_buffer[self.cursor_row-1]) * self.font_bb[0]
+        self.display_cursor.y = self.text_labels[self.cursor_row-1].y - self.font_bb[1]//2
+        print(f"tcursor at row {self.cursor_row}: {self.display_cursor.x},{self.display_cursor.y}")
+
 
     def print_debug(self, level, msg):
         if self.debug >= level :
@@ -544,8 +556,11 @@ class ZMachine:
                 #return input()
                 done = False
                 #print(f"cursor row: {self.cursor_row}, count: {len(self.text_buffer)}, label count: {len(self.text_labels)}")
+                self.display_cursor.x = len(self.text_buffer[self.cursor_row-1]) * self.font_bb[0]
+                self.display_cursor.y = self.text_labels[self.cursor_row-1].y - self.font_bb[1]//2
+                print(f"zcursor at row {self.cursor_row}: {self.display_cursor.x},{self.display_cursor.y}")
                 while True:
-                    #print(time.monotonic() - start_time)
+                    time.sleep(0.001)  # Small delay to prevent blocking
                     if self.sstimeout and (time.monotonic() - start_time) > self.sstimeout:
                         #turn on screen saver
                         self.display_saver.fill=0x000000
@@ -565,10 +580,12 @@ class ZMachine:
                                 user_input = user_input[:-1] # remove last character
                                 self.text_buffer[self.cursor_row-1] = self.text_buffer[self.cursor_row-1][:-1]
                                 self.text_labels[self.cursor_row-1].text = self.text_buffer[self.cursor_row-1]
+                                self.display_cursor.x = len(self.text_buffer[self.cursor_row -1]) * self.font_bb[0]
                         else:
                             user_input += key
                             self.text_buffer[self.cursor_row-1] += key
                             self.text_labels[self.cursor_row-1].text = self.text_buffer[self.cursor_row-1]
+                            self.display_cursor.x = len(self.text_buffer[self.cursor_row -1]) * self.font_bb[0]
                         #return self.keyboard_handler.get_input_line()
                         if done:
                             cmd = user_input.strip().lower()
