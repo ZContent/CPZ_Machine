@@ -5,7 +5,7 @@ A port of the A2Z Machine Z-machine interpreter to CircuitPython with HSTX DVI v
 ## Hardware Requirements
 
 - **Adafruit Fruit Jam** (RP2350B with 16MB Flash + 8MB PSRAM)
-- HDMI cable for video output
+- HDMI cable for video output and compatible monitor
 - USB keyboard for input
 - USB-C cable for programming and power
 
@@ -21,7 +21,6 @@ Copy these libraries to the `lib` folder on your CIRCUITPY drive:
 adafruit_display_text/
 adafruit_display_shapes/
 adafruit_hid/
-adafruit_dang/ (future use for curses support)
 ```
 
 You can download these from the [CircuitPython Library Bundle](https://circuitpython.org/libraries).
@@ -62,7 +61,6 @@ Popular games you can find online:
 - `zork1.z3` - Zork I: The Great Underground Empire
 - `zork2.z3` - Zork II: The Wizard of Frobozz  
 - `zork3.z3` - Zork III: The Dungeon Master
-- `advent.z5` - Adventure (Colossal Cave)
 - `hhgg.z3` - The Hitchhiker's Guide to the Galaxy
 
 ## Hardware Connections
@@ -93,10 +91,10 @@ COLOR_DEPTH = 8        # 8-bit for better memory usage
 
 ### Color Themes
 Available themes can be selected by typing `theme <name>` in the game:
-- `default` - Black background, white text
-- `amiga` - Dark blue background, white text
+- `trs80` - Black background, white text
+- `amiga` - Blue background, white text
 - `compaq` - Black background, green text
-- `c64` - C64 blue background, light blue text
+- `lisa` - White background, black text
 - `amber` - Black background, amber text
 
 ### Memory Settings
@@ -119,16 +117,11 @@ MAX_STORY_SIZE = 1024 * 1024  # 1MB max story size
 - Special interpreter commands:
   - `save` - Save current game
   - `restore` - Restore saved game  
+  - `restart` - Restart game  
   - `quit` - Exit interpreter
   - `themes` - List available color themes
   - `theme <name>` - Change color theme
   - `help` - Show help information
-
-### Keyboard Shortcuts
-- **Arrow Keys**: Navigate command history and cursor
-- **Enter**: Submit command
-- **Escape**: Clear current input
-- **Ctrl+C**: Quit game
 
 Game movement shortcuts:
 - `n`, `s`, `e`, `w` - North, South, East, West
@@ -182,7 +175,7 @@ Game movement shortcuts:
 
 ## Performance Notes
 
-- The Fruit Jam's RP2350B provides excellent performance for Z-machine games
+- The Fruit Jam's RP2350B provides good performance for Z-machine games
 - 8MB PSRAM allows loading of large story files entirely into memory
 - HSTX DVI output provides crisp, flicker-free video
 - Text rendering is optimized for fast scrolling
@@ -197,16 +190,10 @@ CIRCUITPY/
 ├── lib/                    # CircuitPython libraries
 │   ├── adafruit_display_text/
 │   ├── adafruit_display_shapes/
-│   ├── adafruit_dang/
 │   └── adafruit_hid/
-|   adafruit_dang/
 ├── stories/                # Game files (.z3, .z5, .z8)
 │   ├── zork1.z3
-│   ├── zork2.z3
-│   └── zork3.z3
 └── saves/                  # Saved games
-    ├── quicksave.sav
-    └── zork1_save1.sav
 ```
 
 ## Known Limitations
@@ -214,7 +201,7 @@ CIRCUITPY/
 - Not all Z-machine opcodes are fully implemented (sufficient for most games)
 - Sound effects not supported (DVI video only, no audio)
 - Some advanced Z-machine features may not work
-- Limited to Z-machine versions 3, 5, and 8
+- Limited to Z-machine version 3
 - No networking features
 
 ## Credits
@@ -223,7 +210,6 @@ CIRCUITPY/
 - Z-machine specification by Graham Nelson
 - Original JZip interpreter by John Holder
 - CircuitPython DVI support by Adafruit Industries
-- CircuitPython curses support by Adafruit Industries
 
 ## License
 
