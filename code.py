@@ -154,7 +154,7 @@ class ZMachine:
         self.input_buffer = ""
         self.output_buffer = []
         self.text_buffer = []
-        self.cursor_row = 2  # Start below status line
+        self.cursor_row = 0
         self.scrolling = False
         self.cursor_col = 0
         self.status_line = ""
@@ -265,7 +265,7 @@ class ZMachine:
 
         # Main text area (rows 2-29)
         self.text_labels = []
-        for i in range(self.text_rows - 2):
+        for i in range(self.text_rows - 3):
             text_label = bitmap_label.Label(
                 font, # terminalio.FONT,
                 text="",
@@ -273,8 +273,10 @@ class ZMachine:
                 background_color=theme['bg'],
                 x=0, y=i * self.font_bb[1] + self.font_bb[1]*2
             )
+            #print(f"{i}: {text_label.y}")
             self.main_group.append(text_label)
             self.text_labels.append(text_label)
+
         # use for cursor
         self.display_cursor = Rect(0,0,self.font_bb[0],self.font_bb[1],stroke=0,outline=None,fill=theme['text'])
         self.main_group.append(self.display_cursor)
@@ -443,13 +445,10 @@ class ZMachine:
                     if line[i] == ' ':
                         break_pos = i
                         break
-                self.add_text_line(line[:break_pos])
+                self.add_text_line(line[:break_pos] + "\n")
                 line = line[break_pos:].lstrip()
 
-            if line or not self.text_buffer[self.cursor_row]:
-                if len(line) > 0 and ord(line[-1]) == 13:
-                    line = line[:-1]
-                self.add_text_line(line)
+            self.add_text_line(line)
 
     def append_text_to_line(self, line):
         """ append text to cursor line"""
@@ -476,6 +475,7 @@ class ZMachine:
 
     def add_text_line(self, line):
         """Add a line of text to the display"""
+        #print(f"'{line}'")
         line = line.replace('\r', '\n')
         #print(f"cursor: label {self.cursor_row} of {len(self.text_labels)} labels")
         if self.cursor_row >= len(self.text_labels) - 1:
@@ -485,17 +485,20 @@ class ZMachine:
             for i in range(len(self.text_labels)):
                 self.text_labels[i].y -= self.font_bb[1]
                 if self.text_labels[i].y < self.font_bb[1]*2:
-                    self.text_labels[i].y = self.text_rows * self.font_bb[1]
+                    self.text_labels[i].y = len(self.text_labels) * self.font_bb[1] + 2*self.font_bb[1]
                     self.text_buffer[i] = ""
                     self.text_labels[i].text = ""
-                #print(f"{i}: {self.text_labels[i].y}")
+                    self.cursor_row = i
+                #print(f"{i}: {self.text_labels[i].y} {'*' if self.cursor_row == i else ''}")
+        else:
+            self.cursor_row = (self.cursor_row + 1) % (len(self.text_labels))
+
 
         self.text_buffer[self.cursor_row] = line
         self.text_labels[self.cursor_row].text = line
-        self.cursor_row = (self.cursor_row + 1) % (len(self.text_labels))
         self.cursor_col = 0
-        self.display_cursor.x = len(self.text_buffer[self.cursor_row-1]) * self.font_bb[0]
-        self.display_cursor.y = self.text_labels[self.cursor_row-1].y - self.font_bb[1]//2
+        self.display_cursor.x = len(self.text_buffer[self.cursor_row]) * self.font_bb[0]
+        self.display_cursor.y = self.text_labels[self.cursor_row].y - self.font_bb[1]//2
 
     def print_debug(self, level, msg):
         if self.debug >= level :
@@ -559,8 +562,8 @@ class ZMachine:
             if self.keyboard_handler:
                 done = False
                 #print(f"cursor row: {self.cursor_row}, count: {len(self.text_buffer)}, label count: {len(self.text_labels)}")
-                self.display_cursor.x = len(self.text_buffer[self.cursor_row-1]) * self.font_bb[0]
-                self.display_cursor.y = self.text_labels[self.cursor_row-1].y - self.font_bb[1]//2
+                self.display_cursor.x = len(self.text_buffer[self.cursor_row]) * self.font_bb[0]
+                self.display_cursor.y = self.text_labels[self.cursor_row].y - self.font_bb[1]//2
                 while True:
                     #print(time.monotonic() - start_time)
                     time.sleep(0.001)  # Small delay to prevent blocking
@@ -581,14 +584,14 @@ class ZMachine:
                         elif ord(key) == 8: # backspace
                             if len(user_input) > 0:
                                 user_input = user_input[:-1] # remove last character
-                                self.text_buffer[self.cursor_row-1] = self.text_buffer[self.cursor_row-1][:-1]
-                                self.text_labels[self.cursor_row-1].text = self.text_buffer[self.cursor_row-1]
-                                self.display_cursor.x = len(self.text_buffer[self.cursor_row -1]) * self.font_bb[0]
+                                self.text_buffer[self.cursor_row] = self.text_buffer[self.cursor_row][:-1]
+                                self.text_labels[self.cursor_row].text = self.text_buffer[self.cursor_row]
+                                self.display_cursor.x = len(self.text_buffer[self.cursor_row ]) * self.font_bb[0]
                         else:
                             user_input += key
-                            self.text_buffer[self.cursor_row-1] += key
-                            self.text_labels[self.cursor_row-1].text = self.text_buffer[self.cursor_row-1]
-                            self.display_cursor.x = len(self.text_buffer[self.cursor_row -1]) * self.font_bb[0]
+                            self.text_buffer[self.cursor_row] += key
+                            self.text_labels[self.cursor_row].text = self.text_buffer[self.cursor_row]
+                            self.display_cursor.x = len(self.text_buffer[self.cursor_row]) * self.font_bb[0]
                         #return self.keyboard_handler.get_input_line()
                         if done:
                             done = False
