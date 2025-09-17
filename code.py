@@ -254,7 +254,7 @@ class ZMachine:
             font, # terminalio.FONT,
             text=" " * self.text_cols,
             color=theme['status'], background_color=theme['status_bg'],
-            x=0, y= self.font_bb[1]
+            x=0, y= self.font_bb[1] // 2
         )
         self.main_group.append(self.status_label)
 
@@ -428,7 +428,6 @@ class ZMachine:
         self.print_text(">")
         self.display_cursor.x = self.font_bb[0]
         self.display_cursor.y = self.text_labels[self.cursor_row-1].y - self.font_bb[1]//2
-        print(f"cursor at row {self.cursor_row}: {self.display_cursor.x},{self.display_cursor.y}")
 
     def print_text(self, text):
         """Print text to display"""
@@ -497,8 +496,6 @@ class ZMachine:
         self.cursor_col = 0
         self.display_cursor.x = len(self.text_buffer[self.cursor_row-1]) * self.font_bb[0]
         self.display_cursor.y = self.text_labels[self.cursor_row-1].y - self.font_bb[1]//2
-        print(f"tcursor at row {self.cursor_row}: {self.display_cursor.x},{self.display_cursor.y}")
-
 
     def print_debug(self, level, msg):
         if self.debug >= level :
@@ -547,19 +544,25 @@ class ZMachine:
             self.print_text(f"  {theme}")
         self.print_text("\n")
 
+    def flush_input_buffer(self):
+        while supervisor.runtime.serial_bytes_available:
+            sys.stdin.read(1) # clear out any input data before beginning
+
     def get_input(self):
         """Get input from keyboard handler"""
         start_time = time.monotonic()
         user_input = ""
+        self.flush_input_buffer()
+        while supervisor.runtime.serial_bytes_available:
+            sys.stdin.read(1) # clear out any input data before beginning
         while True:
             if self.keyboard_handler:
-                #return input()
                 done = False
                 #print(f"cursor row: {self.cursor_row}, count: {len(self.text_buffer)}, label count: {len(self.text_labels)}")
                 self.display_cursor.x = len(self.text_buffer[self.cursor_row-1]) * self.font_bb[0]
                 self.display_cursor.y = self.text_labels[self.cursor_row-1].y - self.font_bb[1]//2
-                print(f"zcursor at row {self.cursor_row}: {self.display_cursor.x},{self.display_cursor.y}")
                 while True:
+                    #print(time.monotonic() - start_time)
                     time.sleep(0.001)  # Small delay to prevent blocking
                     if self.sstimeout and (time.monotonic() - start_time) > self.sstimeout:
                         #turn on screen saver
@@ -588,21 +591,30 @@ class ZMachine:
                             self.display_cursor.x = len(self.text_buffer[self.cursor_row -1]) * self.font_bb[0]
                         #return self.keyboard_handler.get_input_line()
                         if done:
+                            done = False
                             cmd = user_input.strip().lower()
                             if cmd == 'help':
                                 self.show_help()
+                                self.flush_input_buffer()
                                 self.show_input_prompt()
+                                user_input = ""
                             elif cmd.startswith('theme '):
                                 theme_name = cmd[6:]
                                 self.change_theme(theme_name)
+                                self.flush_input_buffer()
                                 self.show_input_prompt()
+                                user_input = ""
                             elif cmd == 'themes':
                                 self.show_themes()
+                                self.flush_input_buffer()
                                 self.show_input_prompt()
+                                user_input = ""
                             else:
                                 self.print_text("\n") # scroll 1 line for CR by user
+                                #print(f"got user_input '{user_input}'")
                                 return user_input
         self.print_text("\n") # scroll 1 line for CR by user
+        #print(f"got user_input '{user_input}'")
         return user_input
 
     def does_file_exist(self, filename):
@@ -735,15 +747,17 @@ class ZMachine:
             self.display_background.fill=theme['bg']
             self.status_label.color=theme['status']
             self.status_label.background_color=theme['status_bg']
+            self.display_cursor.fill=theme['text']
 
             for i in range(self.text_rows - 2):
                 self.text_labels[i].color=theme['text']
                 self.text_labels[i].background_color=theme['bg']
 
             self.print_text(f"Theme changed to: {theme_name}\n")
+            self.current_theme = theme_name
         else:
             self.print_error(f"Unknown theme: {theme_name}\n")
-        self.current_theme = theme_name
+            return False
 
     def get_stories(self):
         try:
@@ -752,7 +766,7 @@ class ZMachine:
             story_files = sorted(story_files)
             return story_files
         except Exception as e:
-            self.print_error(f"Error geting stories: {e}\n")
+            self.print_error(f"Error getting stories: {e}\n")
             return []
 
     def list_stories(self):
@@ -779,18 +793,18 @@ class ZMachine:
             # only one story available, no need to prompt for one
             return 0
         self.print_text("Select a story # or enter 0 to cancel")
-        i = -1
-        while i < 0 or i > len(story_files):
-            self.print_text("\n")
+        value = -1
+        while value < 0 or value > len(story_files):
             self.show_input_prompt()
-            str = self.get_input()
-            if len(str) > 0:
-                i = int(str)
-                if len(str) > 0 and i == 0:
-                    return
-                if i < 0 or i > len(story_files):
-                    self.print_error(f"Invalid input, select between 1 and {len(story_files)}")
-        return i
+            try:
+                value = int(self.get_input())
+            except ValueError:
+                self.print_error(f"Invalid number, try again.")
+            if value == 0:
+                return 0
+            if value < 0 or value > len(story_files):
+                self.print_error(f"Invalid input, select between 0 and {len(story_files)}")
+        return value
 
     def run_interpreter(self):
         """Main Z-machine interpreter loop"""
@@ -824,9 +838,6 @@ class ZMachine:
                 # Execute one instruction
                 if self.processor:
                     self.processor.execute_instruction()
-                else:
-                    # Fallback for testing
-                    self.test_mode()
 
                 # Yield control periodically
                 if self.processor.instruction_count % 100 == 0:
@@ -839,37 +850,6 @@ class ZMachine:
         except Exception as e:
             self.print_error(f"Game execution error: {e}")
             self.game_running = False
-
-    def test_mode(self):
-        """Simple test mode when processor not available"""
-        while self.game_running:
-            try:
-                cmd = self.get_input()
-
-                if cmd == 'quit':
-                    self.game_running = False
-                elif cmd == 'save':
-                    self.save_game()
-                elif cmd == 'restore':
-                    self.restore_game()
-                elif cmd.startswith('theme '):
-                    theme_name = cmd[6:]
-                    self.change_theme(theme_name)
-                elif cmd == 'themes':
-                    self.print_text("Available themes:")
-                    for theme in self.THEMES.keys():
-                        self.print_text(f"  {theme}")
-                elif cmd == 'help':
-                    self.show_help()
-                else:
-                    # Echo command for testing
-                    self.print_text(f"You typed: {cmd}")
-                    self.print_text("(Full Z-machine processing not active in test mode)")
-
-            except KeyboardInterrupt:
-                self.game_running = False
-            except Exception as e:
-                self.print_error(f"Error: {e}")
 
     def show_help(self):
         """Show help information"""
