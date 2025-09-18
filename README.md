@@ -46,11 +46,10 @@ You can download these from the [CircuitPython Library Bundle](https://circuitpy
    - `zmachine_opcodes.py` (opcode processor)
 
 ### 4. Create Directory Structure
-Create these folders on the CIRCUITPY drive:
+Create this folder on the CIRCUITPY drive:
 ```
 CIRCUITPY/
-├── stories/     # Z-machine game files go here
-└── saves/       # Saved games will be stored here
+└── stories/     # Z-machine game files go here
 ```
 
 ### 5. Add Game Files
@@ -110,6 +109,8 @@ MAX_STORY_SIZE = 1024 * 1024  # 1MB max story size
 2. Power on the Fruit Jam
 3. The Z-machine will start automatically and display available games
 4. Use keyboard to navigate and play
+5. The game will automatically start if there is only one story file, otherwise it will prompt for it
+6. The screen will blank after a period of inactivity (currently 5 minutes), press a key to restore the screen
 
 ### Basic Commands
 - Type game commands normally (e.g., "look", "north", "take lamp")
