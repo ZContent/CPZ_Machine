@@ -236,17 +236,17 @@ class ZProcessor:
 
         opcode_byte = self.zm.read_byte(self.zm.pc)
         self.zm.pc += 1
-        self.zm.print_debug(3,f"opcode_byte: 0x{opcode_byte:02x}")
+        #self.zm.print_debug(3,f"opcode_byte: 0x{opcode_byte:02x}")
 
         # Determine instruction form
         if opcode_byte >= 0xC0:
             # Variable form: VAR
             form = VARIABLE_FORM
             opcode = opcode_byte & 0x1F
-            self.zm.print_debug(3,f"opcode_byte/opcode = 0x{opcode_byte:02x}/0x{opcode:02x}")
+            #self.zm.print_debug(3,f"opcode_byte/opcode = 0x{opcode_byte:02x}/0x{opcode:02x}")
             operand_types = self.decode_operand_types()
             operand_count = len([t for t in operand_types if t != OMITTED])
-            self.zm.print_debug(3,f"operand count:{operand_count}, types:{operand_types}")
+            #self.zm.print_debug(3,f"operand count:{operand_count}, types:{operand_types}")
         elif opcode_byte >= 0xB0:
             # short form: 0OP
             form = SHORT_FORM
@@ -258,14 +258,14 @@ class ZProcessor:
             form = SHORT_FORM
             opcode = opcode_byte & 0x0F
             operand_type = (opcode_byte & 0x30) >> 4
-            self.zm.print_debug(3,f"1opcode = {opcode}")
+            #self.zm.print_debug(3,f"1opcode = {opcode}")
             operand_count = 1
             operand_types = [operand_type]
         else:
             # Long form: 2OP
             form = LONG_FORM
             opcode = opcode_byte & 0x1F
-            self.zm.print_debug(3,f"2opcode byte = {opcode}")
+            #self.zm.print_debug(3,f"2opcode byte = {opcode}")
             operand_count = 2
             operand_types = [
                 SMALL_CONSTANT if (opcode_byte & 0x40) == 0 else VARIABLE,
@@ -280,17 +280,17 @@ class ZProcessor:
                 break
             elif op_type == LARGE_CONSTANT:
                 value = self.zm.read_word(self.zm.pc)
-                self.zm.print_debug(3,f"fetch instruction: read large constant: pc=0x{self.zm.pc:02X}, value={value}")
+                #self.zm.print_debug(3,f"fetch instruction: read large constant: pc=0x{self.zm.pc:02X}, value={value}")
                 self.zm.pc += 2
                 operands.append(value)
             elif op_type == SMALL_CONSTANT:
                 value = self.zm.read_byte(self.zm.pc)
-                self.zm.print_debug(3,f"fetch instruction: read small constant: pc=0x{self.zm.pc:02X}, value={value}")
+                #self.zm.print_debug(3,f"fetch instruction: read small constant: pc=0x{self.zm.pc:02X}, value={value}")
                 self.zm.pc += 1
                 operands.append(value)
             elif op_type == VARIABLE:
                 var_num = self.zm.read_byte(self.zm.pc)
-                self.zm.print_debug(3,f"fetch instruction: read variable: pc=0x{self.zm.pc:02X}, var_num={var_num}")
+                #self.zm.print_debug(3,f"fetch instruction: read variable: pc=0x{self.zm.pc:02X}, var_num={var_num}")
                 self.zm.pc += 1
                 #if var_num <= 15:
                 #    self.print_frame(self.zm.call_stack[-1],"fetch_instruction")
@@ -320,19 +320,20 @@ class ZProcessor:
             self.line_buff = ""
 
     def print_frame(self, frame, i = "0"):
-        self.zm.print_debug(3,f"## frame {i} ##")
-        self.zm.print_debug(3,f"# return_pointer: 0x{frame.return_pointer:02X}")
-        self.zm.print_debug(3,f"# local_vars: {frame.local_vars}")
+        #self.zm.print_debug(3,f"## frame {i} ##")
+        #self.zm.print_debug(3,f"# return_pointer: 0x{frame.return_pointer:02X}")
+        #self.zm.print_debug(3,f"# local_vars: {frame.local_vars}")
         if len(frame.data_stack) > 0:
-            self.zm.print_debug(3,f"# data stack: {frame.data_stack}")
-        self.zm.print_debug(3,"## end ##")
+            pass
+            #self.zm.print_debug(3,f"# data stack: {frame.data_stack}")
+        #self.zm.print_debug(3,"## end ##")
 
     def print_frame_stack(self):
-            self.zm.print_debug(3,"### frame stack top ###")
+            #self.zm.print_debug(3,"### frame stack top ###")
             #for i in range(len(self.zm.call_stack)):
             for i in range(len(self.zm.call_stack), 0, -1):
                 self.print_frame(self.zm.call_stack[i-1],i)
-            self.zm.print_debug(3,"### frame stack bottom ###")
+            #self.zm.print_debug(3,"### frame stack bottom ###")
 
     def read_variable(self, var_num):
         """Read value from variable"""
@@ -340,11 +341,11 @@ class ZProcessor:
             # Stack variable
             if(len(self.zm.call_stack[-1].data_stack) > 0):
                 value = self.zm.call_stack[-1].data_stack.pop()
-                self.zm.print_debug(3,f"read data stack value {value}")
-                self.zm.print_debug(3,f"data stack({len(self.zm.call_stack[-1].data_stack)}): {self.zm.call_stack[-1].data_stack}")
+                #self.zm.print_debug(3,f"read data stack value {value}")
+                #self.zm.print_debug(3,f"data stack({len(self.zm.call_stack[-1].data_stack)}): {self.zm.call_stack[-1].data_stack}")
                 return value
             else:
-                #self.zm.print_debug(3,"warning: data stack is empty")
+                ##self.zm.print_debug(3,"warning: data stack is empty")
                 self.zm.print_error("data stack is empty in read_variable()")
                 self.zm.game_running = False
                 return 0
@@ -352,7 +353,7 @@ class ZProcessor:
             # Local variable
             f = self.zm.call_stack[-1]
             #if hasattr(f,"local_vars"):
-            self.zm.print_debug(3,f"read local var {var_num - 1}: {f.local_vars[var_num - 1]} {f.local_vars}")
+            #self.zm.print_debug(3,f"read local var {var_num - 1}: {f.local_vars[var_num - 1]} {f.local_vars}")
             return f.local_vars[var_num - 1]
             return 0
         else:
@@ -362,32 +363,32 @@ class ZProcessor:
             #print(f"debug: index:{global_index}, var mem start: 0x{self.zm.variables_addr:04X}, address: 0x{addr:04X}")
             #value = self.zm.memory[addr] << 8 | self.zm.memory[addr+1]
             value = self.zm.read_word(addr)
-            self.zm.print_debug(3,f"read global var {global_index} from 0x{addr:04x}: {value}")
+            #self.zm.print_debug(3,f"read global var {global_index} from 0x{addr:04x}: {value}")
             return value
 
     def write_variable(self, var_num, value):
         """Write value to variable"""
-        self.zm.print_debug(3,f"write_variable() {var_num} {value}")
+        #self.zm.print_debug(3,f"write_variable() {var_num} {value}")
         value = value & 0xFFFF  # Ensure 16-bit value
 
         if var_num == 0:
             # Stack variable
             self.zm.call_stack[-1].data_stack.append(value)
-            self.zm.print_debug(3,f"write data stack value {value}")
-            self.zm.print_debug(3,f"data stack({len(self.zm.call_stack[-1].data_stack)}): {self.zm.call_stack[-1].data_stack}")
+            #self.zm.print_debug(3,f"write data stack value {value}")
+            #self.zm.print_debug(3,f"data stack({len(self.zm.call_stack[-1].data_stack)}): {self.zm.call_stack[-1].data_stack}")
         elif var_num <= 15:
             # Local variable
             f = self.zm.call_stack[-1]
             if hasattr(f,"local_vars"):
                 f.local_vars[var_num -1 ] = value
-                self.zm.print_debug(3,f"write local var {var_num - 1}: {value} {f.local_vars}")
+                #self.zm.print_debug(3,f"write local var {var_num - 1}: {value} {f.local_vars}")
         else:
             # Global variable
             global_index = var_num - 16
             addr = self.zm.variables_addr + global_index*2
-            #self.zm.print_debug(3,f"index:{global_index}, var mem start: 0x{self.zm.variables_addr:04X}, address: 0x{addr:04X}")
+            ##self.zm.print_debug(3,f"index:{global_index}, var mem start: 0x{self.zm.variables_addr:04X}, address: 0x{addr:04X}")
             self.zm.write_word(addr, value)
-            self.zm.print_debug(3,f"write global var {global_index} to 0x{addr:04x}: {value}")
+            #self.zm.print_debug(3,f"write global var {global_index} to 0x{addr:04x}: {value}")
 
     def init_frame(self):
         f = Frame()
@@ -426,12 +427,12 @@ class ZProcessor:
             self.zm.opcode = full_opcode
             # Execute opcode
             if full_opcode in self.opcodes:
-                self.zm.print_debug(1,f"**start {self.instruction_count}:{self.opcodes[full_opcode][1]} {operands} pc:0x{(self.zm.pc-pccount):04x}/0x{self.zm.pc:04x} opcode:0x{opcode_byte:02x}/0x{opcode:02x}/0x{full_opcode:02x}")
+                #self.zm.print_debug(1,f"**start {self.instruction_count}:{self.opcodes[full_opcode][1]} {operands} pc:0x{(self.zm.pc-pccount):04x}/0x{self.zm.pc:04x} opcode:0x{opcode_byte:02x}/0x{opcode:02x}/0x{full_opcode:02x}")
                 self.opcodes[full_opcode][0](operands)
-                self.zm.print_debug(2,f"local vars: {self.zm.call_stack[-1].local_vars}")
-                self.zm.print_debug(2,f"data stack: {self.zm.call_stack[-1].data_stack}")
+                #self.zm.print_debug(2,f"local vars: {self.zm.call_stack[-1].local_vars}")
+                #self.zm.print_debug(2,f"data stack: {self.zm.call_stack[-1].data_stack}")
 
-                self.zm.print_debug(3,f"**end {self.opcodes[full_opcode][1]} pc:0x{(self.zm.pc):04X}")
+                #self.zm.print_debug(3,f"**end {self.opcodes[full_opcode][1]} pc:0x{(self.zm.pc):04X}")
             else:
                 self.zm.print_error(f"Unimplemented opcode:0x{opcode:02X}/0x{full_opcode:02X} pc:0x{(self.zm.pc-pccount):04X}")
                 sys.exit()
@@ -453,30 +454,30 @@ class ZProcessor:
     """
     def branch(self, condition):
         """Handle conditional branch"""
-        self.zm.print_debug(3,f"branch() {condition}")
-        self.zm.print_debug(3,f"pc = 0x{self.zm.pc:02X}")
+        #self.zm.print_debug(3,f"branch() {condition}")
+        #self.zm.print_debug(3,f"pc = 0x{self.zm.pc:02X}")
 
         branch_byte = self.zm.read_byte(self.zm.pc)
         self.zm.pc = self.zm.pc + 1
-        self.zm.print_debug(3,f"branch_byte 1:0x{branch_byte:02X}")
+        #self.zm.print_debug(3,f"branch_byte 1:0x{branch_byte:02X}")
 
         branch_on_true = condition
         if (branch_byte & 0x80) == 0:
             branch_on_true = not branch_on_true
         branch_offset = branch_byte & 0x3F
-        self.zm.print_debug(3,f"branch_on_true: {branch_on_true}")
-        self.zm.print_debug(3,f"pc = 0x{self.zm.pc:02X}")
+        #self.zm.print_debug(3,f"branch_on_true: {branch_on_true}")
+        #self.zm.print_debug(3,f"pc = 0x{self.zm.pc:02X}")
         if (branch_byte & 0x40) == 0:
             # Two-byte offset
             second_byte = self.zm.read_byte(self.zm.pc)
             self.zm.pc += 1
-            self.zm.print_debug(3,f"branch_byte 2:0x{second_byte:02X}")
+            #self.zm.print_debug(3,f"branch_byte 2:0x{second_byte:02X}")
             branch_offset = ((branch_offset << 8) | second_byte)
             if branch_offset & 0x2000:
                 branch_offset |= 0xC000  # Sign extend
             if branch_offset > 0 and branch_offset & 0x8000 :
                 branch_offset -= 0x10000 # make negative
-            self.zm.print_debug(3,f"branch_offset: 0x{branch_offset:04x}")
+            #self.zm.print_debug(3,f"branch_offset: 0x{branch_offset:04x}")
         if branch_on_true == True:
 
             if branch_offset == 0:
@@ -485,7 +486,7 @@ class ZProcessor:
                 self.op_rtrue([])
             else:
                 self.zm.pc += branch_offset - 2
-        self.zm.print_debug(3,f"return branch(), branch_offset = 0x{branch_offset:04X}, pc = 0x{self.zm.pc:04X}")
+        #self.zm.print_debug(3,f"return branch(), branch_offset = 0x{branch_offset:04X}, pc = 0x{self.zm.pc:04X}")
 
     def print_object(self, obj):
         objp = self.get_object_address(obj)
@@ -493,25 +494,25 @@ class ZProcessor:
         parent = self.zm.read_byte(objp + object_parent)
         next = self.zm.read_byte(objp + object_next)
         child = self.zm.read_byte(objp + object_child)
-        self.zm.print_debug(3,f"~~Object {obj}(0x{objp:04x}):")
-        self.zm.print_debug(3,f"~name: {name}")
-        self.zm.print_debug(3,f"~parent: {parent} ({self.get_object_name(parent)})")
-        self.zm.print_debug(3,f"~next: {next} ({self.get_object_name(next)})")
-        self.zm.print_debug(3,f"~child: {child} ({self.get_object_name(child)})")
+        #self.zm.print_debug(3,f"~~Object {obj}(0x{objp:04x}):")
+        #self.zm.print_debug(3,f"~name: {name}")
+        #self.zm.print_debug(3,f"~parent: {parent} ({self.get_object_name(parent)})")
+        #self.zm.print_debug(3,f"~next: {next} ({self.get_object_name(next)})")
+        #self.zm.print_debug(3,f"~child: {child} ({self.get_object_name(child)})")
 
     def read_object(self, objp, field):
-        self.zm.print_debug(3,f"read_object() {objp} {field}")
+        #self.zm.print_debug(3,f"read_object() {objp} {field}")
         if field == object_parent:
             result = self.zm.read_byte(objp + object_parent)
         elif field == object_next:
             result = self.zm.read_byte(objp + object_next)
         else:
             result = self.zm.read_byte(objp + object_child)
-        self.zm.print_debug(3,f"read_object() returns {result}")
+        #self.zm.print_debug(3,f"read_object() returns {result}")
         return result
 
     def write_object(self, objp, field, value):
-        self.zm.print_debug(3,f"write_obj() {objp} {field} {value}")
+        #self.zm.print_debug(3,f"write_obj() {objp} {field} {value}")
 
         if field == object_parent:
             self.zm.write_byte(objp + object_parent, value)
@@ -519,20 +520,20 @@ class ZProcessor:
             self.zm.write_byte(objp + object_next, value)
         else:
             self.zm.write_byte(objp + object_child, value)
-        self.zm.print_debug(3,"write_obj() done")
+        #self.zm.print_debug(3,"write_obj() done")
 
     """
     Remove an object by unlinking from its parent object and from its
     siblings.
     """
     def remove_object(self, obj):
-        self.zm.print_debug(3,f"remove_object() {obj}")
+        #self.zm.print_debug(3,f"remove_object() {obj}")
         objp = self.get_object_address(obj)
 
         # Get parent of object, and return if no parent
         parent = self.read_object( objp, object_parent)
 
-        self.zm.print_debug(3,f"parent: {parent}")
+        #self.zm.print_debug(3,f"parent: {parent}")
         if parent == 0:
             return
         # Get address of parent object
@@ -560,22 +561,22 @@ class ZProcessor:
         # Set the parent and next child pointers to NULL
         self.write_object( objp, object_parent, 0 )
         self.write_object( objp, object_next, 0 )
-        self.zm.print_debug(3,"remove_object() done")
+        #self.zm.print_debug(3,"remove_object() done")
 
     def get_property_addr(self, obj):
         """Calculate the address of the start of the property list associated with an object."""
-        self.zm.print_debug(3,f"get_property_addr() {obj}")
+        #self.zm.print_debug(3,f"get_property_addr() {obj}")
         object_addr = self.get_object_address(obj)+ property_offset
         prop_addr = self.zm.read_word( object_addr)
         size = self.zm.read_byte( prop_addr )
-        self.zm.print_debug(3,f"object: {obj} object_addr: {object_addr} prop_addr: {prop_addr} size: {size}")
+        #self.zm.print_debug(3,f"object: {obj} object_addr: {object_addr} prop_addr: {prop_addr} size: {size}")
         value = prop_addr + ( size * 2 ) + 1
-        self.zm.print_debug(3,f"get_property_addr() returns {value}")
+        #self.zm.print_debug(3,f"get_property_addr() returns {value}")
         return value
 
     def get_next_prop(self, prop_addr):
         """Calculate the address of the next property in a property list."""
-        self.zm.print_debug(3,f"get_next_prop() {prop_addr}")
+        #self.zm.print_debug(3,f"get_next_prop() {prop_addr}")
         value = self.zm.read_byte( prop_addr )
         prop_addr+=1
 
@@ -606,7 +607,7 @@ class ZProcessor:
         """Print literal string"""
         text = self.decode_string(self.zm.pc)
         self.write_to_line(text)
-        self.zm.print_debug(3,f"op_string: '{text}'")
+        #self.zm.print_debug(3,f"op_string: '{text}'")
         # Skip over the string
         self.zm.pc = self.skip_string(self.zm.pc)
 
@@ -714,7 +715,7 @@ class ZProcessor:
     dictionary looking for it.
     """
     def find_word(self,token, chop, entry_size ):
-        self.zm.print_debug(3,f"find_word() {token}")
+        #self.zm.print_debug(3,f"find_word() {token}")
         buff = []*3
         mask = [0]*3
         word_index = 0
@@ -750,17 +751,17 @@ class ZProcessor:
                 if word_index > (self.zm.dictionary_size -1):
                     word_index = self.zm.dictionary_size -1
                 offset = self.zm.dictionary_offset + ( word_index * entry_size )
-                self.zm.print_debug(4,f"index: {word_index}/{chop} compare: 0x{buff[0]:04x} with 0x{self.zm.read_word(offset + 0):04x}, offset: {offset}")
+                #self.zm.print_debug(4,f"index: {word_index}/{chop} compare: 0x{buff[0]:04x} with 0x{self.zm.read_word(offset + 0):04x}, offset: {offset}")
                 status1 = (buff[0] & mask[0]) - (self.zm.read_word(offset+0) & mask[0])
                 status2 = (buff[1] & mask[1]) - (self.zm.read_word(offset+2) & mask[1])
                 #status1 = buff[0] - self.zm.read_word(offset + 0)
                 #status2 = buff[1] - self.zm.read_word(offset + 2)
                 #status3 = buff[2] - self.zm.read_word(offset + 4)
                 #status = status1
-                #self.zm.print_debug(0,f"status1:{status1==0} status2:{status2==0} status3:{status3==0}")
-                #self.zm.print_debug(0,f"buff[0]:{buff[0]:04x} offset+0:{self.zm.read_word(offset+0):04x}")
-                #self.zm.print_debug(0,f"buff[1]:{buff[1]:04x} offset+2:{self.zm.read_word(offset+2):04x}")
-                #self.zm.print_debug(0,f"buff[2]:{buff[2]:04x} offset+4:{self.zm.read_word(offset+4):04x}")
+                ##self.zm.print_debug(0,f"status1:{status1==0} status2:{status2==0} status3:{status3==0}")
+                ##self.zm.print_debug(0,f"buff[0]:{buff[0]:04x} offset+0:{self.zm.read_word(offset+0):04x}")
+                ##self.zm.print_debug(0,f"buff[1]:{buff[1]:04x} offset+2:{self.zm.read_word(offset+2):04x}")
+                ##self.zm.print_debug(0,f"buff[2]:{buff[2]:04x} offset+4:{self.zm.read_word(offset+4):04x}")
                 #status = status1
                 #status = (status2 == 0)
                 #if h_type < 4:
@@ -769,7 +770,7 @@ class ZProcessor:
                 #    status = (status3 == 0)
                 # if word matches then return dictionary offset
                 if status1 == 0 and status2 == 0: #  and (h_type < 4 or status3 == 0):
-                    self.zm.print_debug(3,f"'{token}' found at offset 0x{offset:04x} (binary search)")
+                    #self.zm.print_debug(3,f"'{token}' found at offset 0x{offset:04x} (binary search)")
                     return offset
                 if status1 > 0 or (status1 == 0 and status2 > 0):
                     word_index += chop
@@ -792,10 +793,10 @@ class ZProcessor:
                 status2 = buff[1] - self.zm.read_word(offset + 2)
                 status3 = buff[2] - self.zm.read_word(offset + 4)
                 if status1 == 0 and status2 == 0 and (h_type < 4 or status3 == 0):
-                    self.zm.print_debug(3,f"'{token}' found at offset 0x{offset:04x} (linear search)")
+                    #self.zm.print_debug(3,f"'{token}' found at offset 0x{offset:04x} (linear search)")
                     return offset
 
-        self.zm.print_debug(3,f"'{token}' not found")
+        #self.zm.print_debug(3,f"'{token}' not found")
         return 0
 
     """
@@ -808,7 +809,7 @@ class ZProcessor:
     character buffer.
     """
     def tokenize_line(self,char_buf, token_buf, dictionary, flag):
-        self.zm.print_debug(3,f"tokenize line() char_buf:{char_buf} token_buf:{token_buf} dictionary:0x{dictionary:04x} flag:0x{flag:02x}")
+        #self.zm.print_debug(3,f"tokenize line() char_buf:{char_buf} token_buf:{token_buf} dictionary:0x{dictionary:04x} flag:0x{flag:02x}")
         if h_type > 4:
             slen = self.zm.read_byte(char_buf + 1)
             str_end = char_buf + 2 + slen
@@ -834,7 +835,7 @@ class ZProcessor:
         dictp = self.zm.read_word(dictionary)
         count = self.zm.read_byte(dictp)
         dictp += 1
-        self.zm.print_debug(3,f"dictp:0x{dictp:04x} count:{count}")
+        #self.zm.print_debug(3,f"dictp:0x{dictp:04x} count:{count}")
 
         delims = ""
         punctuation = [0] * 16
@@ -846,7 +847,7 @@ class ZProcessor:
         dictp += 1
         self.zm.dictionary_size = self.zm.read_word(dictp)
         self.zm.dictionary_offset = dictp + 2
-        self.zm.print_debug(3,f"dict size: {self.zm.dictionary_size} offset: {self.zm.dictionary_offset}")
+        #self.zm.print_debug(3,f"dict size: {self.zm.dictionary_size} offset: {self.zm.dictionary_offset}")
         delims = "[" + delims + " \t\n\r\f.,?" + "]"
         # Calculate the binary chop start position
         if self.zm.dictionary_size > 0:
@@ -861,7 +862,7 @@ class ZProcessor:
         regex = re.compile(delims)
         tokens = regex.split(buff)
         words = 0
-        self.zm.print_debug(3,f"buff: '{buff}' to tokens: {tokens}")
+        #self.zm.print_debug(3,f"buff: '{buff}' to tokens: {tokens}")
         for token in tokens:
             # Get the word offset from the dictionary
             word = self.find_word(token, chop, entry_size)
@@ -876,7 +877,7 @@ class ZProcessor:
 
     def op_sread(self, operands):
         """Read string from user"""
-        self.zm.print_debug(3,f"op_sread() {operands}")
+        #self.zm.print_debug(3,f"op_sread() {operands}")
         if len(operands) >= 2:
             text_buffer = operands[0]
             parse_buffer = operands[1] if len(operands) > 1 else 0
@@ -913,7 +914,7 @@ class ZProcessor:
             max_len = self.zm.read_byte(text_buffer)
 
             # convert string to lowercase
-            # user_input = user_input.lower()
+            user_input = user_input.lower().strip()
             for i in range(max_len):
                 if i < len(user_input):
                     self.zm.write_byte(cbuf+i, ord(user_input[i]))
@@ -928,7 +929,7 @@ class ZProcessor:
         """Store result of instruction"""
         result_var = self.zm.read_byte(self.zm.pc)
         self.zm.pc += 1
-        self.zm.print_debug(3,f"store_result(): write_variable({result_var}, {value})")
+        #self.zm.print_debug(3,f"store_result(): write_variable({result_var}, {value})")
         self.write_variable(result_var, value)
 
     def return_from_routine(self, value):
@@ -937,7 +938,7 @@ class ZProcessor:
         if self.zm.call_stack:
             #self.zm.pc = self.zm.call_stack[-1].get('stack', []).pop() if self.zm.call_stack[-1].get('stack') else 0
             # get operand count
-            self.zm.print_debug(3,f"pop frame {len(self.zm.call_stack)}:")
+            #self.zm.print_debug(3,f"pop frame {len(self.zm.call_stack)}:")
             #self.print_frame_stack()
             #self.zm.call_stack.pop()
             f = self.zm.call_stack.pop()
@@ -950,7 +951,7 @@ class ZProcessor:
 
             # restore pc
             newpc = f.return_pointer
-            self.zm.print_debug(3,f"pointer from 0x{self.zm.pc:04X} to 0x{newpc:04X}")
+            #self.zm.print_debug(3,f"pointer from 0x{self.zm.pc:04X} to 0x{newpc:04X}")
             self.zm.pc = newpc
         else:
             self.zm.game_running = False
@@ -968,7 +969,7 @@ class ZProcessor:
 
     def encode_string(self, len, s):
         # Encode Z-machine string
-        self.zm.print_debug(3,f"encode_string() '{s}', len:{len}")
+        #self.zm.print_debug(3,f"encode_string() '{s}', len:{len}")
         codes = [0]*9
         buffer = [0]*3
 
@@ -1093,7 +1094,7 @@ class ZProcessor:
             buffer[1] |= 0x8000
         else:
             buffer[2] |= 0x8000
-        self.zm.print_debug(3,f"encode_string:'{s}' to {buffer}")
+        #self.zm.print_debug(3,f"encode_string:'{s}' to {buffer}")
         return buffer
 
     def decode_string(self, addr):
@@ -1108,19 +1109,19 @@ class ZProcessor:
         synonym = 0
         while addr < len(self.zm.memory):
             word = self.zm.read_word(addr)
-            self.zm.print_debug(4,f"read word 0x{word:04x} at address 0x{addr:04x}")
+            #self.zm.print_debug(4,f"read word 0x{word:04x} at address 0x{addr:04x}")
             addr += 2
 
             # Extract 5-bit characters
             for shift in [10, 5, 0]:
                 char_code = (word >> shift) & 0x1F
-                self.zm.print_debug(4,f"code:0x{char_code:02x} syn:{synonym_flag} zscii:{zscii_flag} xscii:{zscii:02x}")
+                #self.zm.print_debug(4,f"code:0x{char_code:02x} syn:{synonym_flag} zscii:{zscii_flag} xscii:{zscii:02x}")
                 if synonym_flag:
                     synonym_flag = 0
                     synonym = ( synonym - 1 ) * 64
                     saddr = self.zm.read_word( self.zm.synonyms_offset + synonym + ( char_code * 2 ) ) * 2
                     syntext = self.decode_string( saddr )
-                    self.zm.print_debug(4,f"synonym at 0x{saddr:04x} is '{syntext}'")
+                    #self.zm.print_debug(4,f"synonym at 0x{saddr:04x} is '{syntext}'")
                     text += syntext
                     shift_state = shift_lock
                 elif zscii_flag:
@@ -1140,7 +1141,7 @@ class ZProcessor:
                         character from the two codes and output it.
                         """
                         zscii_flag = 0
-                        self.zm.print_debug(4,f"write_char: 0x{int(zscii)|char_code:02x} ({chr(int(zscii)|char_code)})")
+                        #self.zm.print_debug(4,f"write_char: 0x{int(zscii)|char_code:02x} ({chr(int(zscii)|char_code)})")
                         self.write_zchar( int(zscii) | int(char_code))
                 elif char_code > 5:
                     char_code -= 6
@@ -1184,11 +1185,11 @@ class ZProcessor:
         sys.exit()
 
     def op_get_sibling(self, operands):
-        self.zm.print_debug(3,f"op_get_sibling({operands[0]})")
+        #self.zm.print_debug(3,f"op_get_sibling({operands[0]})")
         self.print_object(operands[0])
         obj = operands[0]
         next = self.read_object(self.get_object_address(obj), object_next)
-        self.zm.print_debug(3,f"sibling is {next}")
+        #self.zm.print_debug(3,f"sibling is {next}")
         self.store_result(next)
         self.branch(next != 0)
 
@@ -1197,20 +1198,20 @@ class ZProcessor:
     not NULL.
     """
     def op_get_child(self, operands):
-        self.zm.print_debug(3,f"op_get_child({operands[0]})")
+        #self.zm.print_debug(3,f"op_get_child({operands[0]})")
         self.print_object(operands[0])
         obj = operands[0]
         child = self.read_object(self.get_object_address(obj), object_child)
-        self.zm.print_debug(3,f"child is {child}")
+        #self.zm.print_debug(3,f"child is {child}")
         self.store_result(child)
         self.branch(child != 0)
 
     def op_get_parent(self, operands):
-        self.zm.print_debug(3,f"op_get_parent({operands[0]})")
+        #self.zm.print_debug(3,f"op_get_parent({operands[0]})")
         self.print_object(operands[0])
         objp = self.get_object_address(operands[0])
         result = self.zm.read_byte(objp + object_parent)
-        self.zm.print_debug(3,f"op_get_parent() returns {result}")
+        #self.zm.print_debug(3,f"op_get_parent() returns {result}")
         self.store_result(result)
         #specifier = self.zm.read_byte(self.zm.pc)
         #self.zm.pc += 1
@@ -1262,7 +1263,7 @@ class ZProcessor:
         if ptr > 0 and ptr & 0x8000 != 0:
             # negative #, make it so
             ptr = ptr - 0x10000
-        self.zm.print_debug(3,f"jump from 0x{self.zm.pc:04X} to 0x{(self.zm.pc+ptr):04X}")
+        #self.zm.print_debug(3,f"jump from 0x{self.zm.pc:04X} to 0x{(self.zm.pc+ptr):04X}")
         self.zm.pc += ptr - 2
 
     """Convert packed address to real address"""
@@ -1295,7 +1296,7 @@ class ZProcessor:
         #self.op_get_parent([operands[0]])
         #parent = self.read_variable(0)
         n = operands[1]
-        self.zm.print_debug(3,f"op_jin(): {parent} {n}")
+        #self.zm.print_debug(3,f"op_jin(): {parent} {n}")
         # not sure why but this is to avoid reading branch byte if false:
         #if(parent == n):
         self.branch(parent == n)
@@ -1371,10 +1372,10 @@ class ZProcessor:
     chain.
     """
     def op_insert_obj(self, operands):
-        self.zm.print_debug(3,f"op_insert_obj({operands[0]} {operands[1]})")
+        #self.zm.print_debug(3,f"op_insert_obj({operands[0]} {operands[1]})")
         obj1 = operands[0]
         obj2 = operands[1]
-        self.zm.print_debug(3,"before insert:")
+        #self.zm.print_debug(3,"before insert:")
         self.print_object(obj1)
         self.print_object(obj2)
         # Get addresses of both objects
@@ -1398,7 +1399,7 @@ class ZProcessor:
         if child2 != 0:
             self.write_object(obj1p, object_next, child2)
 
-        self.zm.print_debug(3,"after insert:")
+        #self.zm.print_debug(3,"after insert:")
         self.print_object(obj1)
         self.print_object(obj2)
 
@@ -1556,7 +1557,7 @@ class ZProcessor:
             if len(self.zm.call_stack) >= self.zm.STACK_SIZE:
                 self.zm.print_error("stack is out of memory")
                 sys.exit()
-            self.zm.print_debug(3,f"in op_call(), pc=0x{self.zm.pc:04X}")
+            #self.zm.print_debug(3,f"in op_call(), pc=0x{self.zm.pc:04X}")
 
             self.zm.pc = operands[0] * address_scaler
             argc = len(operands)
@@ -1575,17 +1576,17 @@ class ZProcessor:
                         arg = arg - 0x10000 # make negative
                     if argc > 0:
                         value = operands[i]
-                        self.zm.print_debug(3,f"operand[{i}] is {value}")
+                        #self.zm.print_debug(3,f"operand[{i}] is {value}")
                         f.local_vars[i-1] = value
                     else:
                         f.local_vars[i-1] = arg
                     argc -= 1
-                    self.zm.print_debug(3,f"local var {i-1} is {f.local_vars[i-1]}")
+                    #self.zm.print_debug(3,f"local var {i-1} is {f.local_vars[i-1]}")
                     i += 1
             self.zm.call_stack.append(f)
-            self.zm.print_debug(3,f"new frame {len(self.zm.call_stack)}:")
+            #self.zm.print_debug(3,f"new frame {len(self.zm.call_stack)}:")
             self.print_frame(f,"test")
-            self.zm.print_debug(3,f">> stack size # {len(self.zm.call_stack)} (append)")
+            #self.zm.print_debug(3,f">> stack size # {len(self.zm.call_stack)} (append)")
 
     def op_storew(self, operands):
         """Store a word"""
@@ -1613,7 +1614,7 @@ class ZProcessor:
         prop_addr = self.get_property_addr(obj)
         while True:
             value = self.zm.read_byte( prop_addr)
-            self.zm.print_debug(3,f"value:{value} property_mask:{property_mask} prop:{prop}")
+            #self.zm.print_debug(3,f"value:{value} property_mask:{property_mask} prop:{prop}")
             if(value & property_mask ) <= prop:
                 break
             prop_addr = self.get_next_prop(prop_addr)
@@ -1647,7 +1648,7 @@ class ZProcessor:
             result = random.randint(1,range)
         else:
             random.seed(12345) #zero range?
-        self.zm.print_debug(3,f"random() returns {result}")
+        #self.zm.print_debug(3,f"random() returns {result}")
         self.store_result(result)
 
     def op_push(self, operands):
@@ -1655,7 +1656,7 @@ class ZProcessor:
         self.zm.call_stack[-1].data_stack.append(value)
 
     def op_pull(self, operands):
-        self.zm.print_debug(3,f"stack size: {len(self.zm.call_stack[-1].data_stack)}")
+        #self.zm.print_debug(3,f"stack size: {len(self.zm.call_stack[-1].data_stack)}")
         var = operands[0]
 
         value = self.zm.call_stack[-1].data_stack.pop()
@@ -1665,7 +1666,7 @@ class ZProcessor:
         if len(self.zm.call_stack[-1].data_stack) > 0:
             value = self.zm.call_stack[-1].data_stack.pop()
         else:
-            self.zm.print_debug(3,"warning: data stack is empty")
+            #self.zm.print_debug(3,"warning: data stack is empty")
             self.zm.print_error("data stack is empty in op_pull()")
             self.zm.game_running = False
             value = 0
@@ -1700,7 +1701,7 @@ class ZProcessor:
 
     def op_save(self, operands):
         value = self.zm.save_game()
-        self.zm.print_debug(3,f"pc: 0x{self.zm.pc:04x}")
+        #self.zm.print_debug(3,f"pc: 0x{self.zm.pc:04x}")
         self.print_frame_stack()
         self.branch(value == True)
         return value == True

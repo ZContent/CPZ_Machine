@@ -56,7 +56,7 @@ from adafruit_color_terminal import ColorTerminal
 from zmachine_opcodes import ZProcessor, Frame
 
 # Z-Machine constants
-SUPPORTED_VERSIONS = [3, 5, 8]
+SUPPORTED_VERSIONS = [3]
 SAVE_DIR = "/saves/cpz"
 #SAVE_DIR = "//saves/cpz"
 STORY_DIR = "/stories"
@@ -430,7 +430,7 @@ class ZMachine:
 
     def print_text(self, text):
         """Print text to display"""
-        self.print_debug(3,"print_text()")
+        #self.print_debug(3,"print_text()")
         if not text:
             return
         lines = text.split('\n')
@@ -447,7 +447,7 @@ class ZMachine:
                 line = line[break_pos:].lstrip()
 
             self.add_text_line(line)
-        self.print_debug(3,"print_text() done")
+        #self.print_debug(3,"print_text() done")
 
     def append_text_to_line(self, line):
         """ append text to cursor line"""
@@ -474,7 +474,7 @@ class ZMachine:
 
     def add_text_line(self, line):
         """Add a line of text to the display"""
-        self.print_debug(3,f"add_text_line(): {line}")
+        #self.print_debug(3,f"add_text_line(): {line}")
         line = line.replace('\r', '\n')
         line = line.replace('\n', '')
         #print(f"cursor: label {self.cursor_row} of {len(self.text_labels)} labels")
@@ -482,7 +482,7 @@ class ZMachine:
             self.scrolling = True
         if self.scrolling:
             # Scroll up
-            self.print_debug(3,f"scrolling display")
+            #self.print_debug(3,f"scrolling display")
             for i in range(len(self.text_labels)):
                 self.text_labels[i].y -= self.font_bb[1]
                 if self.text_labels[i].y < self.font_bb[1]*2:
@@ -490,8 +490,8 @@ class ZMachine:
                     self.text_buffer[i] = ""
                     self.text_labels[i].text = ""
                     self.cursor_row = i
-                self.print_debug(4,f"{i}: {self.text_labels[i].y} {'*' if self.cursor_row == i else ''}")
-            self.print_debug(3,f"scrolling display done")
+                #self.print_debug(4,f"{i}: {self.text_labels[i].y} {'*' if self.cursor_row == i else ''}")
+            #self.print_debug(3,f"scrolling display done")
         else:
             self.cursor_row = (self.cursor_row + 1) % (len(self.text_labels))
 
@@ -501,7 +501,7 @@ class ZMachine:
         self.cursor_col = 0
         self.display_cursor.x = len(self.text_buffer[self.cursor_row]) * self.font_bb[0]
         self.display_cursor.y = self.text_labels[self.cursor_row].y - self.font_bb[1]//2
-        self.print_debug(3,f"add_text_line() done")
+        #self.print_debug(3,f"add_text_line() done")
 
     def print_debug(self, level, msg):
         if self.debug >= level :
@@ -642,7 +642,7 @@ class ZMachine:
         save_name = self.filename.split(".")[0].lower() + "." + save
         try:
             save_path = f"{SAVE_DIR}/{save_name}.sav"
-            self.print_debug(3,f"save path: {save_path}")
+            #self.print_debug(3,f"save path: {save_path}")
             if not self.does_file_exist(save_path):
                 raise RuntimeError(f"save file not found: {save}")
             # file name exists, ok to save the name
@@ -689,7 +689,7 @@ class ZMachine:
         save_name = self.filename.split(".")[0].lower() + "." + save
         try:
             save_path = f"{SAVE_DIR}/{save_name}.sav"
-            self.print_debug(3,f"save path:{save_path}")
+            #self.print_debug(3,f"save path:{save_path}")
             os.mkdir(SAVE_DIR)
         except Exception as e:
             pass #existing folder?
@@ -794,7 +794,7 @@ class ZMachine:
         story_files = self.get_stories()
         if len(story_files) == 1:
             # only one story available, no need to prompt for one
-            return 0
+            return 1
         self.print_text("Select a story # or enter 0 to cancel")
         value = -1
         while value < 0 or value > len(story_files):
@@ -818,12 +818,14 @@ class ZMachine:
         self.print_text("=" * 50)
         self.print_text("\n")
         # List available stories
-        stories = self.list_stories()
+        stories = self.get_stories()
         if not stories:
             return
 
-        # For demo, load first story automatically
+        # load first story automatically if there is only one
         if stories:
+            if len(stories) > 1:
+                self.list_stories()
             story = self.get_story()
             if story > 0:
                 if self.load_story(stories[story-1]):
@@ -846,7 +848,7 @@ class ZMachine:
                 if self.processor.instruction_count % 100 == 0:
                     time.sleep(0.001)  # Small delay to prevent blocking
             if not self.game_running :
-                self.print_text("game is no longer running (interrupted?)\n")
+                self.print_text("Game is no longer running\n")
         except KeyboardInterrupt:
             self.print_text("\nGame interrupted by user")
             self.game_running = False
@@ -885,7 +887,11 @@ def main():
     # Run the interpreter
     zmachine.run_interpreter()
 
+    zmachine.print_text("Z-Machine interpreter terminated")
     print("Z-Machine interpreter terminated")
+    zmachine.print_text("Press a key to continue")
+    print("Press a key to continue")
+    sys.stdin.read(1)
 
 if __name__ == "__main__":
     main()
