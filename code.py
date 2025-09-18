@@ -62,14 +62,12 @@ SAVE_DIR = "/saves/cpz"
 STORY_DIR = "/stories"
 MAX_STORY_SIZE = 1024 * 1024  # 1MB max story size (plenty of PSRAM available)
 
-# Display configuration for Fruit Jam built-in DVI
+# These settings may be nice to have in a separate config file
 DISPLAY_WIDTH = 640   # Take advantage of higher resolution
 DISPLAY_HEIGHT = 480
 COLOR_DEPTH = 8       # 8-bit color for better memory usage
-CHAR_WIDTH = 8
-CHAR_HEIGHT = 16
-TEXT_COLS = DISPLAY_WIDTH // CHAR_WIDTH    # 80 columns
-TEXT_ROWS = DISPLAY_HEIGHT // CHAR_HEIGHT  # 30 rows
+SSTIMEOUT = 300 # screen saver timeout, in seconds
+DEFAULT_THEME = "compaq"
 
 class ZMachine:
 # Color themes (expanded from A2Z Machine)
@@ -119,7 +117,6 @@ class ZMachine:
         4 - add loops
         """
         self.debug = 0 # debug level, 0 = no debugging output
-        self.sstimeout = 300 # screen saver timeout, in seconds
         self.filename = ""
         self.save_game_name = "default"
         self.DATA_SIZE = 1024*20
@@ -137,7 +134,7 @@ class ZMachine:
         self.dictionary = {}
         self.dictionary_size = 0
         self.dictionary_offset = 0
-        self.current_theme = 'compaq'
+        self.current_theme = DEFAULT_THEME
         self.display = None
         self.processor = None
         self.input_buffer = ""
@@ -560,7 +557,7 @@ class ZMachine:
             while True:
                 #print(time.monotonic() - start_time)
                 time.sleep(0.001)  # Small delay to prevent blocking
-                if self.sstimeout and (time.monotonic() - start_time) > self.sstimeout:
+                if (time.monotonic() - start_time) > SSTIMEOUT:
                     #turn on screen saver
                     self.display_saver.y = 0
                     # wait for keystroke before turning screen saver off
