@@ -54,10 +54,9 @@ from adafruit_fruitjam.peripherals import request_display_config
 from adafruit_color_terminal import ColorTerminal
 # Import our custom modules
 from zmachine_opcodes import ZProcessor, Frame
-from keyboard_handler import ZKeyboardHandler
 
 # Z-Machine constants
-SUPPORTED_VERSIONS = [3, 5, 8]
+SUPPORTED_VERSIONS = [3]
 SAVE_DIR = "/saves/cpz"
 #SAVE_DIR = "//saves/cpz"
 STORY_DIR = "/stories"
@@ -149,12 +148,11 @@ class ZMachine:
         self.dictionary_offset = 0
         self.current_theme = 'compaq'
         self.display = None
-        self.keyboard_handler = None
         self.processor = None
         self.input_buffer = ""
         self.output_buffer = []
         self.text_buffer = []
-        self.cursor_row = 2  # Start below status line
+        self.cursor_row = 0
         self.scrolling = False
         self.cursor_col = 0
         self.status_line = ""
@@ -180,9 +178,8 @@ class ZMachine:
         self.string_offset = 0
         self.synonyms_offset = 0
 
-        # Initialize processor and keyboard handler
+        # Initialize processor
         self.processor = ZProcessor(self)
-        self.keyboard_handler = ZKeyboardHandler(self)
 
         self.terminal = None
 
@@ -265,7 +262,7 @@ class ZMachine:
 
         # Main text area (rows 2-29)
         self.text_labels = []
-        for i in range(self.text_rows - 2):
+        for i in range(self.text_rows - 3):
             text_label = bitmap_label.Label(
                 font, # terminalio.FONT,
                 text="",
@@ -273,13 +270,15 @@ class ZMachine:
                 background_color=theme['bg'],
                 x=0, y=i * self.font_bb[1] + self.font_bb[1]*2
             )
+            #print(f"{i}: {text_label.y}")
             self.main_group.append(text_label)
             self.text_labels.append(text_label)
+
         # use for cursor
         self.display_cursor = Rect(0,0,self.font_bb[0],self.font_bb[1],stroke=0,outline=None,fill=theme['text'])
         self.main_group.append(self.display_cursor)
         # use for screen saver
-        self.display_saver = Rect(0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT, fill=None)
+        self.display_saver = Rect(0, DISPLAY_HEIGHT, DISPLAY_WIDTH, DISPLAY_HEIGHT, fill=0x000000)
         self.main_group.append(self.display_saver)
 
 
@@ -427,10 +426,11 @@ class ZMachine:
         """ used by non-machine routines, should match machine prompt """
         self.print_text(">")
         self.display_cursor.x = self.font_bb[0]
-        self.display_cursor.y = self.text_labels[self.cursor_row-1].y - self.font_bb[1]//2
+        self.display_cursor.y = self.text_labels[self.cursor_row].y - self.font_bb[1]//2
 
     def print_text(self, text):
         """Print text to display"""
+        #self.print_debug(3,"print_text()")
         if not text:
             return
         lines = text.split('\n')
@@ -443,13 +443,11 @@ class ZMachine:
                     if line[i] == ' ':
                         break_pos = i
                         break
-                self.add_text_line(line[:break_pos])
+                self.add_text_line(line[:break_pos] + "\n")
                 line = line[break_pos:].lstrip()
 
-            if line or not self.text_buffer[self.cursor_row]:
-                if len(line) > 0 and ord(line[-1]) == 13:
-                    line = line[:-1]
-                self.add_text_line(line)
+            self.add_text_line(line)
+        #self.print_debug(3,"print_text() done")
 
     def append_text_to_line(self, line):
         """ append text to cursor line"""
@@ -476,26 +474,34 @@ class ZMachine:
 
     def add_text_line(self, line):
         """Add a line of text to the display"""
+        #self.print_debug(3,f"add_text_line(): {line}")
         line = line.replace('\r', '\n')
+        line = line.replace('\n', '')
         #print(f"cursor: label {self.cursor_row} of {len(self.text_labels)} labels")
         if self.cursor_row >= len(self.text_labels) - 1:
             self.scrolling = True
         if self.scrolling:
             # Scroll up
+            #self.print_debug(3,f"scrolling display")
             for i in range(len(self.text_labels)):
                 self.text_labels[i].y -= self.font_bb[1]
                 if self.text_labels[i].y < self.font_bb[1]*2:
-                    self.text_labels[i].y = self.text_rows * self.font_bb[1]
+                    self.text_labels[i].y = len(self.text_labels) * self.font_bb[1] + 2*self.font_bb[1]
                     self.text_buffer[i] = ""
                     self.text_labels[i].text = ""
-                #print(f"{i}: {self.text_labels[i].y}")
+                    self.cursor_row = i
+                #self.print_debug(4,f"{i}: {self.text_labels[i].y} {'*' if self.cursor_row == i else ''}")
+            #self.print_debug(3,f"scrolling display done")
+        else:
+            self.cursor_row = (self.cursor_row + 1) % (len(self.text_labels))
 
         self.text_buffer[self.cursor_row] = line
+        self.text_buffer[self.cursor_row] = line
         self.text_labels[self.cursor_row].text = line
-        self.cursor_row = (self.cursor_row + 1) % (len(self.text_labels))
         self.cursor_col = 0
-        self.display_cursor.x = len(self.text_buffer[self.cursor_row-1]) * self.font_bb[0]
-        self.display_cursor.y = self.text_labels[self.cursor_row-1].y - self.font_bb[1]//2
+        self.display_cursor.x = len(self.text_buffer[self.cursor_row]) * self.font_bb[0]
+        self.display_cursor.y = self.text_labels[self.cursor_row].y - self.font_bb[1]//2
+        #self.print_debug(3,f"add_text_line() done")
 
     def print_debug(self, level, msg):
         if self.debug >= level :
@@ -549,71 +555,68 @@ class ZMachine:
             sys.stdin.read(1) # clear out any input data before beginning
 
     def get_input(self):
-        """Get input from keyboard handler"""
+        """Get input from stdin"""
         start_time = time.monotonic()
         user_input = ""
         self.flush_input_buffer()
         while supervisor.runtime.serial_bytes_available:
             sys.stdin.read(1) # clear out any input data before beginning
         while True:
-            if self.keyboard_handler:
-                done = False
-                #print(f"cursor row: {self.cursor_row}, count: {len(self.text_buffer)}, label count: {len(self.text_labels)}")
-                self.display_cursor.x = len(self.text_buffer[self.cursor_row-1]) * self.font_bb[0]
-                self.display_cursor.y = self.text_labels[self.cursor_row-1].y - self.font_bb[1]//2
-                while True:
-                    #print(time.monotonic() - start_time)
-                    time.sleep(0.001)  # Small delay to prevent blocking
-                    if self.sstimeout and (time.monotonic() - start_time) > self.sstimeout:
-                        #turn on screen saver
-                        self.display_saver.fill=0x000000
-                        # wait for keystroke before turning screen saver off
-                        sys.stdin.read(1)
-                        self.display_saver.fill=None
-                        #reset screen saver timer
-                        start_time = time.monotonic()
-                    if supervisor.runtime.serial_bytes_available:
-                        key = sys.stdin.read(1)
-                        #self.text_labels[self.cursor_row].text += key
-                        #self.keyboard_handler.handle_keypress(key)
-                        if ord(key) == 10:
-                            done = True
-                        elif ord(key) == 8: # backspace
-                            if len(user_input) > 0:
-                                user_input = user_input[:-1] # remove last character
-                                self.text_buffer[self.cursor_row-1] = self.text_buffer[self.cursor_row-1][:-1]
-                                self.text_labels[self.cursor_row-1].text = self.text_buffer[self.cursor_row-1]
-                                self.display_cursor.x = len(self.text_buffer[self.cursor_row -1]) * self.font_bb[0]
+            done = False
+            #print(f"cursor row: {self.cursor_row}, count: {len(self.text_buffer)}, label count: {len(self.text_labels)}")
+            self.display_cursor.x = len(self.text_buffer[self.cursor_row]) * self.font_bb[0]
+            self.display_cursor.y = self.text_labels[self.cursor_row].y - self.font_bb[1]//2
+            while True:
+                #print(time.monotonic() - start_time)
+                time.sleep(0.001)  # Small delay to prevent blocking
+                if self.sstimeout and (time.monotonic() - start_time) > self.sstimeout:
+                    #turn on screen saver
+                    self.display_saver.y = 0
+                    # wait for keystroke before turning screen saver off
+                    sys.stdin.read(1)
+                    self.display_saver.y=DISPLAY_HEIGHT
+                    #reset screen saver timer
+                    start_time = time.monotonic()
+                if supervisor.runtime.serial_bytes_available:
+                    key = sys.stdin.read(1)
+                    #self.text_labels[self.cursor_row].text += key
+                    if ord(key) == 10:
+                        done = True
+                    elif ord(key) == 8: # backspace
+                        if len(user_input) > 0:
+                            user_input = user_input[:-1] # remove last character
+                            self.text_buffer[self.cursor_row] = self.text_buffer[self.cursor_row][:-1]
+                            self.text_labels[self.cursor_row].text = self.text_buffer[self.cursor_row]
+                            self.display_cursor.x = len(self.text_buffer[self.cursor_row ]) * self.font_bb[0]
+                    else:
+                        user_input += key
+                        self.text_buffer[self.cursor_row] += key
+                        self.text_labels[self.cursor_row].text = self.text_buffer[self.cursor_row]
+                        self.display_cursor.x = len(self.text_buffer[self.cursor_row]) * self.font_bb[0]
+                    if done:
+                        done = False
+                        cmd = user_input.strip().lower()
+                        if cmd == 'help':
+                            self.show_help()
+                            self.flush_input_buffer()
+                            self.show_input_prompt()
+                            user_input = ""
+                        elif cmd.startswith('theme '):
+                            theme_name = cmd[6:]
+                            self.change_theme(theme_name)
+                            self.flush_input_buffer()
+                            self.show_input_prompt()
+                            user_input = ""
+                        elif cmd == 'themes':
+                            self.show_themes()
+                            self.flush_input_buffer()
+                            self.show_input_prompt()
+                            user_input = ""
                         else:
-                            user_input += key
-                            self.text_buffer[self.cursor_row-1] += key
-                            self.text_labels[self.cursor_row-1].text = self.text_buffer[self.cursor_row-1]
-                            self.display_cursor.x = len(self.text_buffer[self.cursor_row -1]) * self.font_bb[0]
-                        #return self.keyboard_handler.get_input_line()
-                        if done:
-                            done = False
-                            cmd = user_input.strip().lower()
-                            if cmd == 'help':
-                                self.show_help()
-                                self.flush_input_buffer()
-                                self.show_input_prompt()
-                                user_input = ""
-                            elif cmd.startswith('theme '):
-                                theme_name = cmd[6:]
-                                self.change_theme(theme_name)
-                                self.flush_input_buffer()
-                                self.show_input_prompt()
-                                user_input = ""
-                            elif cmd == 'themes':
-                                self.show_themes()
-                                self.flush_input_buffer()
-                                self.show_input_prompt()
-                                user_input = ""
-                            else:
-                                self.print_text("\n") # scroll 1 line for CR by user
-                                #print(f"got user_input '{user_input}'")
-                                return user_input
-        self.print_text("\n") # scroll 1 line for CR by user
+                            self.print_text("\n") # scroll 1 line for CR by user
+                            #print(f"got user_input '{user_input}'")
+                            return user_input
+        self.print_text("") # scroll 1 line for CR by user
         #print(f"got user_input '{user_input}'")
         return user_input
 
@@ -639,7 +642,7 @@ class ZMachine:
         save_name = self.filename.split(".")[0].lower() + "." + save
         try:
             save_path = f"{SAVE_DIR}/{save_name}.sav"
-            self.print_debug(3,f"save path: {save_path}")
+            #self.print_debug(3,f"save path: {save_path}")
             if not self.does_file_exist(save_path):
                 raise RuntimeError(f"save file not found: {save}")
             # file name exists, ok to save the name
@@ -686,7 +689,7 @@ class ZMachine:
         save_name = self.filename.split(".")[0].lower() + "." + save
         try:
             save_path = f"{SAVE_DIR}/{save_name}.sav"
-            self.print_debug(3,f"save path:{save_path}")
+            #self.print_debug(3,f"save path:{save_path}")
             os.mkdir(SAVE_DIR)
         except Exception as e:
             pass #existing folder?
@@ -749,7 +752,7 @@ class ZMachine:
             self.status_label.background_color=theme['status_bg']
             self.display_cursor.fill=theme['text']
 
-            for i in range(self.text_rows - 2):
+            for i in range(len(self.text_labels)):
                 self.text_labels[i].color=theme['text']
                 self.text_labels[i].background_color=theme['bg']
 
@@ -791,7 +794,7 @@ class ZMachine:
         story_files = self.get_stories()
         if len(story_files) == 1:
             # only one story available, no need to prompt for one
-            return 0
+            return 1
         self.print_text("Select a story # or enter 0 to cancel")
         value = -1
         while value < 0 or value > len(story_files):
@@ -815,12 +818,14 @@ class ZMachine:
         self.print_text("=" * 50)
         self.print_text("\n")
         # List available stories
-        stories = self.list_stories()
+        stories = self.get_stories()
         if not stories:
             return
 
-        # For demo, load first story automatically
+        # load first story automatically if there is only one
         if stories:
+            if len(stories) > 1:
+                self.list_stories()
             story = self.get_story()
             if story > 0:
                 if self.load_story(stories[story-1]):
@@ -843,7 +848,7 @@ class ZMachine:
                 if self.processor.instruction_count % 100 == 0:
                     time.sleep(0.001)  # Small delay to prevent blocking
             if not self.game_running :
-                self.print_text("game is no longer running (interrupted?)\n")
+                self.print_text("Game is no longer running\n")
         except KeyboardInterrupt:
             self.print_text("\nGame interrupted by user")
             self.game_running = False
@@ -882,7 +887,11 @@ def main():
     # Run the interpreter
     zmachine.run_interpreter()
 
+    zmachine.print_text("Z-Machine interpreter terminated")
     print("Z-Machine interpreter terminated")
+    zmachine.print_text("Press a key to continue")
+    print("Press a key to continue")
+    sys.stdin.read(1)
 
 if __name__ == "__main__":
     main()

@@ -44,7 +44,6 @@ You can download these from the [CircuitPython Library Bundle](https://circuitpy
 1. Copy the main files to the CIRCUITPY drive:
    - `code.py` (main Z-machine implementation)
    - `zmachine_opcodes.py` (opcode processor)
-   - `keyboard_handler.py` (input handler)
 
 ### 4. Create Directory Structure
 Create these folders on the CIRCUITPY drive:
@@ -186,7 +185,6 @@ Game movement shortcuts:
 CIRCUITPY/
 ├── code.py                 # Main Z-machine interpreter
 ├── zmachine_opcodes.py     # Opcode processor
-├── keyboard_handler.py     # Input handling
 ├── lib/                    # CircuitPython libraries
 │   ├── adafruit_display_text/
 │   ├── adafruit_display_shapes/
