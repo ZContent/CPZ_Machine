@@ -32,8 +32,7 @@ import gc
 import time
 import usb_hid
 
-#from adafruit_display_text import label
-from adafruit_display_text import bitmap_label
+from adafruit_display_text.bitmap_label import Label
 from adafruit_display_shapes.rect import Rect
 from adafruit_hid.keyboard import Keyboard
 from adafruit_hid.keycode import Keycode
@@ -220,8 +219,6 @@ class ZMachine:
         theme = self.THEMES[self.current_theme]
 
         font = terminalio.FONT
-        #font = OnDiskFont("fonts/en_US.lvfont.bin")
-        #font = OnDiskFont("fonts/cp437_16h.bin")
         self.font_bb = font.get_bounding_box()
 
         self.text_cols = self.display.width // self.font_bb[0]
@@ -235,8 +232,8 @@ class ZMachine:
 
         self.main_group.append(self.display_background)
         # Status line (row 0)
-        self.status_label = bitmap_label.Label(
-            font, # terminalio.FONT,
+        self.status_label = Label(
+            font,
             text=" " * self.text_cols,
             color=theme['status'], background_color=theme['status_bg'],
             x=0, y= self.font_bb[1] // 2
@@ -251,8 +248,8 @@ class ZMachine:
         # Main text area (rows 2-29)
         self.text_labels = []
         for i in range(self.text_rows - 3):
-            text_label = bitmap_label.Label(
-                font, # terminalio.FONT,
+            text_label = Label(
+                font,
                 text="",
                 color=theme['text'],
                 background_color=theme['bg'],
@@ -261,14 +258,12 @@ class ZMachine:
             #print(f"{i}: {text_label.y}")
             self.main_group.append(text_label)
             self.text_labels.append(text_label)
-
         # use for cursor
         self.display_cursor = Rect(0,0,self.font_bb[0],self.font_bb[1],stroke=0,outline=None,fill=theme['text'])
         self.main_group.append(self.display_cursor)
         # use for screen saver
         self.display_saver = Rect(0, DISPLAY_HEIGHT, DISPLAY_WIDTH, DISPLAY_HEIGHT, fill=0x000000)
         self.main_group.append(self.display_saver)
-
 
     def init_keyboard(self):
         """Initialize USB keyboard input"""
