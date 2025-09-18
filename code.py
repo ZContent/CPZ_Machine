@@ -430,6 +430,7 @@ class ZMachine:
 
     def print_text(self, text):
         """Print text to display"""
+        self.print_debug(3,"print_text()")
         if not text:
             return
         lines = text.split('\n')
@@ -445,7 +446,11 @@ class ZMachine:
                 self.add_text_line(line[:break_pos] + "\n")
                 line = line[break_pos:].lstrip()
 
+            print(f"add_text_line() len={len(line)} '{line}'")
+            if len(line) == 1:
+                print(f"character at 0 pos: {ord(line[0])}")
             self.add_text_line(line)
+        self.print_debug(3,"print_text() done")
 
     def append_text_to_line(self, line):
         """ append text to cursor line"""
@@ -472,13 +477,15 @@ class ZMachine:
 
     def add_text_line(self, line):
         """Add a line of text to the display"""
-        #print(f"'{line}'")
+        self.print_debug(3,f"add_text_line(): {line}")
         line = line.replace('\r', '\n')
+        line = line.replace('\n', '')
         #print(f"cursor: label {self.cursor_row} of {len(self.text_labels)} labels")
         if self.cursor_row >= len(self.text_labels) - 1:
             self.scrolling = True
         if self.scrolling:
             # Scroll up
+            self.print_debug(3,f"scrolling display")
             for i in range(len(self.text_labels)):
                 self.text_labels[i].y -= self.font_bb[1]
                 if self.text_labels[i].y < self.font_bb[1]*2:
@@ -486,16 +493,18 @@ class ZMachine:
                     self.text_buffer[i] = ""
                     self.text_labels[i].text = ""
                     self.cursor_row = i
-                #print(f"{i}: {self.text_labels[i].y} {'*' if self.cursor_row == i else ''}")
+                self.print_debug(4,f"{i}: {self.text_labels[i].y} {'*' if self.cursor_row == i else ''}")
+            self.print_debug(3,f"scrolling display done")
         else:
             self.cursor_row = (self.cursor_row + 1) % (len(self.text_labels))
 
-
+        self.text_buffer[self.cursor_row] = line
         self.text_buffer[self.cursor_row] = line
         self.text_labels[self.cursor_row].text = line
         self.cursor_col = 0
         self.display_cursor.x = len(self.text_buffer[self.cursor_row]) * self.font_bb[0]
         self.display_cursor.y = self.text_labels[self.cursor_row].y - self.font_bb[1]//2
+        self.print_debug(3,f"add_text_line() done")
 
     def print_debug(self, level, msg):
         if self.debug >= level :
@@ -610,7 +619,7 @@ class ZMachine:
                             self.print_text("\n") # scroll 1 line for CR by user
                             #print(f"got user_input '{user_input}'")
                             return user_input
-        self.print_text("\n") # scroll 1 line for CR by user
+        self.print_text("") # scroll 1 line for CR by user
         #print(f"got user_input '{user_input}'")
         return user_input
 
