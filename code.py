@@ -57,8 +57,7 @@ from zmachine_opcodes import ZProcessor, Frame
 # Z-Machine constants
 SUPPORTED_VERSIONS = [3]
 SAVE_DIR = "/saves/cpz"
-#SAVE_DIR = "//saves/cpz"
-STORY_DIR = "/stories"
+STORY_DIR = "stories"
 MAX_STORY_SIZE = 1024 * 1024  # 1MB max story size (plenty of PSRAM available)
 
 # These settings may be nice to have in a separate config file
