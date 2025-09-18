@@ -79,40 +79,31 @@ class ZMachine:
             'text': 0xFFFFFF,       # White
             'status': 0x000000,     # Black
             'status_bg': 0xFFFFFF,  # White
-            'input': 0xFFFF00,      # Yellow
-            'error': 0xFF0000       # Red
         },
         'lisa': {
             'bg': 0xFFFFFF,         # White
             'text': 0x000000,       # Black
             'status': 0xFFFFFF,     # White
             'status_bg': 0x000000,  # Black
-            'input': 0xFFFF00,      # Yellow
-            'error': 0xFF0000       # Red
         },
         'compaq': {
             'bg': 0x000000,         # Black
             'text': 0x00FF00,       # Green
             'status': 0x000000,     # Black
             'status_bg': 0x00FF00,  #Green
-            'input': 0xFFFF00,      # Yellow
-            'error': 0xFF8080       # Light red
         },
         'amiga': {
             'bg': 0x4040E0,         # C64 blue
-            'text': 0xA0A0FF,       # Light blue
+            #'text': 0xA0A0FF,       # Light blue
+            'text': 0xFFFFFF,       # White
             'status': 0x4040E0,     # C64 Blue
             'status_bg': 0xA0A0FF,  # Light blue
-            'input': 0xFFFF40,      # Light yellow
-            'error': 0xFF4040       # Light red
         },
         'amber': {
             'bg': 0x000000,         # Black
             'text': 0xFFB000,       # Amber
             'status': 0x000000,     # Black
             'status_bg': 0xFFB000,  # Amber
-            'input': 0xFFFFFF,      # White
-            'error': 0xFF4000       # Orange-red
         }
     }
 
