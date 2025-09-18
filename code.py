@@ -278,7 +278,7 @@ class ZMachine:
         self.display_cursor = Rect(0,0,self.font_bb[0],self.font_bb[1],stroke=0,outline=None,fill=theme['text'])
         self.main_group.append(self.display_cursor)
         # use for screen saver
-        self.display_saver = Rect(0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT, fill=None)
+        self.display_saver = Rect(0, DISPLAY_HEIGHT, DISPLAY_WIDTH, DISPLAY_HEIGHT, fill=0x000000)
         self.main_group.append(self.display_saver)
 
 
@@ -426,7 +426,7 @@ class ZMachine:
         """ used by non-machine routines, should match machine prompt """
         self.print_text(">")
         self.display_cursor.x = self.font_bb[0]
-        self.display_cursor.y = self.text_labels[self.cursor_row-1].y - self.font_bb[1]//2
+        self.display_cursor.y = self.text_labels[self.cursor_row].y - self.font_bb[1]//2
 
     def print_text(self, text):
         """Print text to display"""
@@ -446,9 +446,6 @@ class ZMachine:
                 self.add_text_line(line[:break_pos] + "\n")
                 line = line[break_pos:].lstrip()
 
-            print(f"add_text_line() len={len(line)} '{line}'")
-            if len(line) == 1:
-                print(f"character at 0 pos: {ord(line[0])}")
             self.add_text_line(line)
         self.print_debug(3,"print_text() done")
 
@@ -574,10 +571,10 @@ class ZMachine:
                 time.sleep(0.001)  # Small delay to prevent blocking
                 if self.sstimeout and (time.monotonic() - start_time) > self.sstimeout:
                     #turn on screen saver
-                    self.display_saver.fill=0x000000
+                    self.display_saver.y = 0
                     # wait for keystroke before turning screen saver off
                     sys.stdin.read(1)
-                    self.display_saver.fill=None
+                    self.display_saver.y=DISPLAY_HEIGHT
                     #reset screen saver timer
                     start_time = time.monotonic()
                 if supervisor.runtime.serial_bytes_available:
@@ -755,7 +752,7 @@ class ZMachine:
             self.status_label.background_color=theme['status_bg']
             self.display_cursor.fill=theme['text']
 
-            for i in range(self.text_rows - 2):
+            for i in range(len(self.text_labels)):
                 self.text_labels[i].color=theme['text']
                 self.text_labels[i].background_color=theme['bg']
 
