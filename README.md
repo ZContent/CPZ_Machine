@@ -12,7 +12,7 @@ A port of the A2Z Machine Z-machine interpreter to CircuitPython with HSTX DVI v
 ## Software Requirements
 
 ### CircuitPython Version
-- CircuitPython 9.2.0 or later (for HSTX DVI support on RP2350)
+- CircuitPython 10.0.0 or later (for HSTX DVI support on RP2350, Fruit Jam OS and CPSAVES support)
 
 ### Required Libraries
 Copy these libraries to the `lib` folder on your CIRCUITPY drive:
