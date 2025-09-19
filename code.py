@@ -560,7 +560,7 @@ class ZMachine:
                 start_time = time.monotonic()
             if supervisor.runtime.serial_bytes_available:
                 key = sys.stdin.read(1)
-                #self.text_labels[self.cursor_row].text += key
+                start_time = time.monotonic() # restart screen saver
                 if ord(key) == 10:
                     done = True
                 elif ord(key) == 8: # backspace
