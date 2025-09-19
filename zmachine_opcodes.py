@@ -814,10 +814,13 @@ class ZProcessor:
             slen = self.zm.read_byte(char_buf + 1)
             str_end = char_buf + 2 + slen
         else:
-            slen = 0
-            while self.zm.read_byte(char_buf + slen) != 0:
-                slen += 1
-            str_end = char_buf + 1 + slen;
+            #slen = self.zm.read_byte(char_buf)
+            pos = 1
+            while self.zm.read_byte(char_buf + pos) != 0:
+                pos += 1
+            str_end = char_buf + 1 + pos;
+            slen = pos
+            #print(f"slen:{slen}")
 
         # Initialise word count and pointers
         words = 0
@@ -860,7 +863,7 @@ class ZProcessor:
                     break
         max_tokens = self.zm.read_byte(token_buf)
         regex = re.compile(delims)
-        tokens = regex.split(buff)
+        tokens = regex.split(buff.rstrip('\x00'))
         words = 0
         #self.zm.print_debug(3,f"buff: '{buff}' to tokens: {tokens}")
         for token in tokens:
@@ -880,7 +883,6 @@ class ZProcessor:
         #self.zm.print_debug(3,f"op_sread() {operands}")
         if len(operands) >= 2:
             text_buffer = operands[0]
-            parse_buffer = operands[1] if len(operands) > 1 else 0
 
             # Refresh status line
             if h_type < 4:
@@ -911,7 +913,9 @@ class ZProcessor:
                 self.zm.debug += 1 if self.zm.debug <= 10 else 0
 
             # Store in text buffer
-            max_len = self.zm.read_byte(text_buffer)
+            #max_len = self.zm.read_byte(text_buffer)
+            # fix, max_len always returns 0 after first blank line, hard coding max_len for now
+            max_len = 100
 
             # convert string to lowercase
             user_input = user_input.lower().strip()
@@ -923,6 +927,7 @@ class ZProcessor:
             # Tokenize the line, if a token buffer is present */
 
             if operands[1]:
+                #print(f"user_input:'{user_input}', buffer:'{text_buffer}'")
                 self.tokenize_line( text_buffer, operands[1], h_words_offset, 0 )
 
     def store_result(self, value):

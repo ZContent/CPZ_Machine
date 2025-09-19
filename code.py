@@ -50,7 +50,6 @@ import displayio
 from lvfontio import OnDiskFont
 from adafruit_bitmap_font import bitmap_font
 from adafruit_fruitjam.peripherals import request_display_config
-from adafruit_color_terminal import ColorTerminal
 # Import our custom modules
 from zmachine_opcodes import ZProcessor, Frame
 
@@ -242,7 +241,7 @@ class ZMachine:
         #main_group = displayio.Group()
         display = supervisor.runtime.display
         #display.root_group = main_group
-        self.terminal = ColorTerminal(font, DISPLAY_WIDTH, DISPLAY_HEIGHT)
+        #self.terminal = ColorTerminal(font, DISPLAY_WIDTH, DISPLAY_HEIGHT)
 
         # Main text area (rows 2-29)
         self.text_labels = []
@@ -773,7 +772,7 @@ class ZMachine:
         if len(story_files) == 1:
             # only one story available, no need to prompt for one
             return 1
-        self.print_text("Select a story # or enter 0 to cancel")
+        self.print_text("Select a story # or enter 0 to exit")
         value = -1
         while value < 0 or value > len(story_files):
             self.show_input_prompt()
