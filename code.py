@@ -543,64 +543,60 @@ class ZMachine:
         self.flush_input_buffer()
         while supervisor.runtime.serial_bytes_available:
             sys.stdin.read(1) # clear out any input data before beginning
+
+        done = False
+        self.display_cursor.x = len(self.text_buffer[self.cursor_row]) * self.font_bb[0]
+        self.display_cursor.y = self.text_labels[self.cursor_row].y - self.font_bb[1]//2
         while True:
-            done = False
-            #print(f"cursor row: {self.cursor_row}, count: {len(self.text_buffer)}, label count: {len(self.text_labels)}")
-            self.display_cursor.x = len(self.text_buffer[self.cursor_row]) * self.font_bb[0]
-            self.display_cursor.y = self.text_labels[self.cursor_row].y - self.font_bb[1]//2
-            while True:
-                #print(time.monotonic() - start_time)
-                time.sleep(0.001)  # Small delay to prevent blocking
-                if (time.monotonic() - start_time) > SSTIMEOUT:
-                    #turn on screen saver
-                    self.display_saver.y = 0
-                    # wait for keystroke before turning screen saver off
-                    sys.stdin.read(1)
-                    self.display_saver.y=DISPLAY_HEIGHT
-                    #reset screen saver timer
-                    start_time = time.monotonic()
-                if supervisor.runtime.serial_bytes_available:
-                    key = sys.stdin.read(1)
-                    #self.text_labels[self.cursor_row].text += key
-                    if ord(key) == 10:
-                        done = True
-                    elif ord(key) == 8: # backspace
-                        if len(user_input) > 0:
-                            user_input = user_input[:-1] # remove last character
-                            self.text_buffer[self.cursor_row] = self.text_buffer[self.cursor_row][:-1]
-                            self.text_labels[self.cursor_row].text = self.text_buffer[self.cursor_row]
-                            self.display_cursor.x = len(self.text_buffer[self.cursor_row ]) * self.font_bb[0]
-                    else:
-                        user_input += key
-                        self.text_buffer[self.cursor_row] += key
+            #print(time.monotonic() - start_time)
+            time.sleep(0.001)  # Small delay to prevent blocking
+            if (time.monotonic() - start_time) > SSTIMEOUT:
+                #turn on screen saver
+                self.display_saver.y = 0
+                # wait for keystroke before turning screen saver off
+                sys.stdin.read(1)
+                self.display_saver.y=DISPLAY_HEIGHT
+                #reset screen saver timer
+                start_time = time.monotonic()
+            if supervisor.runtime.serial_bytes_available:
+                key = sys.stdin.read(1)
+                #self.text_labels[self.cursor_row].text += key
+                if ord(key) == 10:
+                    done = True
+                elif ord(key) == 8: # backspace
+                    if len(user_input) > 0:
+                        user_input = user_input[:-1] # remove last character
+                        self.text_buffer[self.cursor_row] = self.text_buffer[self.cursor_row][:-1]
                         self.text_labels[self.cursor_row].text = self.text_buffer[self.cursor_row]
-                        self.display_cursor.x = len(self.text_buffer[self.cursor_row]) * self.font_bb[0]
-                    if done:
-                        done = False
-                        cmd = user_input.strip().lower()
-                        if cmd == 'help':
-                            self.show_help()
-                            self.flush_input_buffer()
-                            self.show_input_prompt()
-                            user_input = ""
-                        elif cmd.startswith('theme '):
-                            theme_name = cmd[6:]
-                            self.change_theme(theme_name)
-                            self.flush_input_buffer()
-                            self.show_input_prompt()
-                            user_input = ""
-                        elif cmd == 'themes':
-                            self.show_themes()
-                            self.flush_input_buffer()
-                            self.show_input_prompt()
-                            user_input = ""
-                        else:
-                            self.print_text("\n") # scroll 1 line for CR by user
-                            #print(f"got user_input '{user_input}'")
-                            return user_input
-        self.print_text("") # scroll 1 line for CR by user
-        #print(f"got user_input '{user_input}'")
-        return user_input
+                        self.display_cursor.x = len(self.text_buffer[self.cursor_row ]) * self.font_bb[0]
+                else:
+                    user_input += key
+                    self.text_buffer[self.cursor_row] += key
+                    self.text_labels[self.cursor_row].text = self.text_buffer[self.cursor_row]
+                    self.display_cursor.x = len(self.text_buffer[self.cursor_row]) * self.font_bb[0]
+                if done:
+                    done = False
+                    cmd = user_input.strip().lower()
+                    if cmd == 'help':
+                        self.show_help()
+                        self.flush_input_buffer()
+                        self.show_input_prompt()
+                        user_input = ""
+                    elif cmd.startswith('theme '):
+                        theme_name = cmd[6:]
+                        self.change_theme(theme_name)
+                        self.flush_input_buffer()
+                        self.show_input_prompt()
+                        user_input = ""
+                    elif cmd == 'themes':
+                        self.show_themes()
+                        self.flush_input_buffer()
+                        self.show_input_prompt()
+                        user_input = ""
+                    else:
+                        self.print_text("") # scroll 1 line for CR by user
+                        #print(f"got user_input '{user_input}'")
+                        return user_input
 
     def does_file_exist(self, filename):
         try:

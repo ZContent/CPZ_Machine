@@ -435,8 +435,8 @@ class ZProcessor:
                 #self.zm.print_debug(3,f"**end {self.opcodes[full_opcode][1]} pc:0x{(self.zm.pc):04X}")
             else:
                 self.zm.print_error(f"Unimplemented opcode:0x{opcode:02X}/0x{full_opcode:02X} pc:0x{(self.zm.pc-pccount):04X}")
-                sys.exit()
-
+                self.zm.game_running = False
+                return
         except Exception as e:
             self.zm.print_error(f"Execution error at PC 0x{self.zm.pc:04X}: {e}")
             self.zm.game_running = False
@@ -1179,10 +1179,10 @@ class ZProcessor:
         return addr
 
     # Placeholder implementations for other opcodes
-    #def op_catch(self, operands): pass
     def op_catch(self, operands):
-        print_line("op_catch() not yet supported")
-        sys.exit()
+        self.zm.print_error("op_catch() not yet supported")
+        self.zm.game_running = False
+        return
 
     def op_get_sibling(self, operands):
         #self.zm.print_debug(3,f"op_get_sibling({operands[0]})")
@@ -1696,8 +1696,9 @@ class ZProcessor:
         self.write_to_line(text)
 
     def op_call_2s(self, operands):
-        print_line("op_call_2s() not yet supported")
-        sys.exit()
+        self.zm.print_error("op_call_2s() not yet supported")
+        self.zm.game_running = False
+        return
 
     def op_save(self, operands):
         value = self.zm.save_game()
