@@ -65,6 +65,11 @@ DISPLAY_HEIGHT = 480
 COLOR_DEPTH = 8       # 8-bit color for better memory usage
 SSTIMEOUT = 300 # screen saver timeout, in seconds
 DEFAULT_THEME = "compaq"
+#FONT_FILE = "" # built-in font, 106 x 40 font
+#FONT_FILE="fonts/ter12n.pcf" # 106 x 34 font
+#FONT_FILE="fonts/ter14n.pcf" # 80 x 30 font
+FONT_FILE="fonts/ter16n.pcf" # 80 x 24 font
+#FONT_FILE="fonts/ter18n.pcf" # 64 x 22 font
 
 class ZMachine:
 # Color themes (expanded from A2Z Machine)
@@ -145,7 +150,7 @@ class ZMachine:
         self.z_version = 0
         self.current_opcode = None # for stack trace (future)
         self.game_running = False
-        self.font_bb = []
+        self.font_bb = [0]*2
         self.text_labels = []
         self.line_buff = ""
         # calculated based on screen size and font size
@@ -215,10 +220,18 @@ class ZMachine:
     def setup_text_display(self):
         """Setup full-screen text display"""
         theme = self.THEMES[self.current_theme]
+        if len(FONT_FILE) == 0:
+            font = terminalio.FONT # 106 x 40 font
+        else:
+            font = bitmap_font.load_font(FONT_FILE)
+        bb = font.get_bounding_box()
+        self.font_bb[0] = bb[0]
+        self.font_bb[1] = bb[1]
+        if len(bb) == 4:
+            self.font_bb[1] -= bb[3]
 
-        font = terminalio.FONT
-        self.font_bb = font.get_bounding_box()
-
+        if self.font_bb[0] == 0:
+            raise ValueError("Invalid font, must be a monospace font")
         self.text_cols = self.display.width // self.font_bb[0]
         self.text_rows = self.display.height // self.font_bb[1]
         print(f"text display: {self.text_cols} x {self.text_rows}")
@@ -240,8 +253,6 @@ class ZMachine:
 
         #main_group = displayio.Group()
         display = supervisor.runtime.display
-        #display.root_group = main_group
-        #self.terminal = ColorTerminal(font, DISPLAY_WIDTH, DISPLAY_HEIGHT)
 
         # Main text area (rows 2-29)
         self.text_labels = []
@@ -424,7 +435,8 @@ class ZMachine:
                     if line[i] == ' ':
                         break_pos = i
                         break
-                self.add_text_line(line[:break_pos] + "\n")
+                if break_pos < self.text_cols:
+                    self.add_text_line(line[:break_pos] + "\n")
                 line = line[break_pos:].lstrip()
 
             self.add_text_line(line)
