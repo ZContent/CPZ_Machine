@@ -65,6 +65,7 @@ DISPLAY_HEIGHT = 480
 COLOR_DEPTH = 8       # 8-bit color for better memory usage
 SSTIMEOUT = 300 # screen saver timeout, in seconds
 DEFAULT_THEME = "compaq"
+CURSOR_BLINK = True
 #FONT_FILE = "" # built-in font, 106 x 40 font
 #FONT_FILE="fonts/ter12n.pcf" # 106 x 34 font
 #FONT_FILE="fonts/ter14n.pcf" # 80 x 30 font
@@ -550,6 +551,8 @@ class ZMachine:
     def get_input(self):
         """Get input from stdin"""
         start_time = time.monotonic()
+        blink_time = time.monotonic()
+        save_cursor_y = self.display_cursor.y
         user_input = ""
         self.flush_input_buffer()
         while supervisor.runtime.serial_bytes_available:
@@ -559,7 +562,14 @@ class ZMachine:
         self.display_cursor.x = len(self.text_buffer[self.cursor_row]) * self.font_bb[0]
         self.display_cursor.y = self.text_labels[self.cursor_row].y - self.font_bb[1]//2
         while True:
-            #print(time.monotonic() - start_time)
+            if CURSOR_BLINK and (time.monotonic() - blink_time) > .5:
+                # toggle cursor blinking
+                blink_time = time.monotonic()
+                if self.display_cursor.y < DISPLAY_HEIGHT:
+                    save_cursor_y = self.display_cursor.y
+                    self.display_cursor.y = DISPLAY_HEIGHT
+                else:
+                    self.display_cursor.y = save_cursor_y
             time.sleep(0.001)  # Small delay to prevent blocking
             if (time.monotonic() - start_time) > SSTIMEOUT:
                 #turn on screen saver
