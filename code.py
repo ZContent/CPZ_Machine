@@ -465,9 +465,9 @@ class ZMachine:
             for i in range(len(self.text_labels)):
                 self.text_labels[i].y -= self.font_bb[1]
                 if self.text_labels[i].y < self.font_bb[1]*2:
-                    self.text_labels[i].y = len(self.text_labels) * self.font_bb[1] + 2*self.font_bb[1]
                     self.text_buffer[i] = ""
                     self.text_labels[i].text = ""
+                    self.text_labels[i].y = len(self.text_labels) * self.font_bb[1] + 2*self.font_bb[1]
                     self.cursor_row = i
                 #self.print_debug(4,f"{i}: {self.text_labels[i].y} {'*' if self.cursor_row == i else ''}")
             #self.print_debug(3,f"scrolling display done")
