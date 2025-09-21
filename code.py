@@ -143,7 +143,7 @@ class ZMachine:
         self.input_buffer = ""
         self.output_buffer = []
         self.text_buffer = []
-        self.cursor_row = 0
+        self.cursor_row = -1
         self.scrolling = False
         self.cursor_col = 0
         self.status_line = ""
@@ -336,7 +336,6 @@ class ZMachine:
 
             self.print_text(f"Loaded {filename} (Z{self.z_version})")
             self.print_text(f"Story size: {len(self.story_data)} bytes")
-            self.print_text("\n")
             self.filename = filename
             return True
 
@@ -452,20 +451,6 @@ class ZMachine:
         for i in range(count):
             self.text_buffer[self.cursor_row] = self.text_buffer[self.cursor_row][:-1]
 
-    def add_text_line_old(self, line):
-        """Add a line of text to the display"""
-        if self.cursor_row >= len(self.text_labels):
-            # Scroll up
-            for i in range(len(self.text_labels) - 1):
-                self.text_buffer[i] = self.text_buffer[i + 1]
-                self.text_labels[i].text = self.text_buffer[i]
-            self.cursor_row = len(self.text_labels) - 1
-
-        self.text_buffer[self.cursor_row] = line
-        self.text_labels[self.cursor_row].text = line
-        self.cursor_row += 1
-        self.cursor_col = 0
-
     def add_text_line(self, line):
         """Add a line of text to the display"""
         #self.print_debug(3,f"add_text_line(): {line}")
@@ -542,7 +527,7 @@ class ZMachine:
         self.print_text("Available themes:")
         for theme in self.THEMES.keys():
             self.print_text(f"  {theme}")
-        self.print_text("\n")
+        #self.print_text("")
 
     def flush_input_buffer(self):
         while supervisor.runtime.serial_bytes_available:
@@ -815,7 +800,6 @@ class ZMachine:
         self.print_text("Based on A2Z Machine by Dan Cogliano")
         self.print_text(f"Display: {self.text_cols} cols x {self.text_rows} rows")
         self.print_text("=" * 50)
-        self.print_text("\n")
         # List available stories
         stories = self.get_stories()
         if not stories:
@@ -891,6 +875,7 @@ def main():
     zmachine.print_text("Press a key to continue")
     print("Press a key to continue")
     sys.stdin.read(1)
+    supervisor.reload()
 
 if __name__ == "__main__":
     main()
