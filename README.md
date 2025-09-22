@@ -20,7 +20,6 @@ Copy these libraries to the `lib` folder on your CIRCUITPY drive:
 ```
 adafruit_display_text/
 adafruit_display_shapes/
-adafruit_hid/
 ```
 
 You can download these from the [CircuitPython Library Bundle](https://circuitpython.org/libraries).
@@ -38,7 +37,6 @@ You can download these from the [CircuitPython Library Bundle](https://circuitpy
 2. Extract and copy the required libraries to `CIRCUITPY/lib/`:
    - `adafruit_display_text/`
    - `adafruit_display_shapes/`
-   - `adafruit_hid/`
 
 ### 3. Install Z-Machine Code
 1. Copy the main files to the CIRCUITPY drive:
@@ -188,8 +186,7 @@ CIRCUITPY/
 ├── zmachine_opcodes.py     # Opcode processor
 ├── lib/                    # CircuitPython libraries
 │   ├── adafruit_display_text/
-│   ├── adafruit_display_shapes/
-│   └── adafruit_hid/
+│   └├── adafruit_display_shapes/
 ├── stories/                # Game files (.z3, .z5, .z8)
 │   ├── zork1.z3
 └── saves/                  # Saved games
