@@ -18,7 +18,6 @@ Features:
 Libraries Required:
 - adafruit_display_text
 - adafruit_display_shapes
-- adafruit_hid (for USB keyboard)
 """
 
 import board
@@ -30,12 +29,9 @@ import sys
 import os
 import gc
 import time
-import usb_hid
 
 from adafruit_display_text.bitmap_label import Label
 from adafruit_display_shapes.rect import Rect
-from adafruit_hid.keyboard import Keyboard
-from adafruit_hid.keycode import Keycode
 import supervisor
 import storage
 
@@ -274,16 +270,6 @@ class ZMachine:
         # use for screen saver
         self.display_saver = Rect(0, DISPLAY_HEIGHT, DISPLAY_WIDTH, DISPLAY_HEIGHT, fill=0x000000)
         self.main_group.append(self.display_saver)
-
-    def init_keyboard(self):
-        """Initialize USB keyboard input"""
-        try:
-            self.keyboard = Keyboard(usb_hid.devices)
-            print("USB keyboard initialized")
-            return True
-        except Exception as e:
-            print(f"Failed to initialize keyboard: {e}")
-            return False
 
     def load_story(self, filename):
         """Load Z-machine story file"""
@@ -862,10 +848,6 @@ def main():
     if not zmachine.init_display():
         print("Failed to initialize display")
         return
-
-    # Initialize keyboard
-    if not zmachine.init_keyboard():
-        print("Warning: Keyboard initialization failed")
 
     # Run the interpreter
     zmachine.run_interpreter()
