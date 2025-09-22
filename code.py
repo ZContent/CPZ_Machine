@@ -257,7 +257,7 @@ class ZMachine:
 
         # Main text area (rows 2-29)
         self.text_labels = []
-        for i in range(self.text_rows - 3):
+        for i in range(self.text_rows - 2):
             text_label = Label(
                 font,
                 text="",
@@ -288,6 +288,7 @@ class ZMachine:
     def load_story(self, filename):
         """Load Z-machine story file"""
         try:
+            self.print_text(f"Loading {filename}...")
             story_path = f"{STORY_DIR}/{filename}"
             sp = os.stat(story_path)
             if not sp[0]:
@@ -334,7 +335,6 @@ class ZMachine:
             self.init_objects()
             self.init_dictionary()
 
-            self.print_text(f"Loaded {filename} (Z{self.z_version})")
             self.print_text(f"Story size: {len(self.story_data)} bytes")
             self.filename = filename
             return True
@@ -436,7 +436,7 @@ class ZMachine:
                         break_pos = i
                         break
                 if break_pos < self.text_cols:
-                    self.add_text_line(line[:break_pos] + "\n")
+                    self.add_text_line(line[:break_pos])
                 line = line[break_pos:].lstrip()
 
             self.add_text_line(line)
@@ -467,7 +467,7 @@ class ZMachine:
                 if self.text_labels[i].y < self.font_bb[1]*2:
                     self.text_buffer[i] = ""
                     self.text_labels[i].text = ""
-                    self.text_labels[i].y = len(self.text_labels) * self.font_bb[1] + 2*self.font_bb[1]
+                    self.text_labels[i].y = (len(self.text_labels)-1) * self.font_bb[1] + 2*self.font_bb[1]
                     self.cursor_row = i
                 #self.print_debug(4,f"{i}: {self.text_labels[i].y} {'*' if self.cursor_row == i else ''}")
             #self.print_debug(3,f"scrolling display done")
