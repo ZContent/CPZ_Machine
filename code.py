@@ -409,8 +409,8 @@ class ZMachine:
     def print_text(self, text):
         """Print text to display"""
         #self.print_debug(3,"print_text()")
-        if not text:
-            return
+        if len(text) > 0 and text[-1] == "\n":
+            text = text[:-1]
         lines = text.split('\n')
         for line in lines:
             # Word wrap if necessary
