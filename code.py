@@ -39,6 +39,7 @@ import storage
 from adafruit_fruitjam import peripherals
 from displayio import Group
 from terminalio import FONT
+import settings
 
 import gc
 import supervisor
@@ -54,19 +55,6 @@ SUPPORTED_VERSIONS = [3]
 SAVE_DIR = "/saves/cpz"
 STORY_DIR = "stories"
 MAX_STORY_SIZE = 1024 * 1024  # 1MB max story size (plenty of PSRAM available)
-
-# These settings may be nice to have in a separate config file
-DISPLAY_WIDTH = 640   # Take advantage of higher resolution
-DISPLAY_HEIGHT = 480
-COLOR_DEPTH = 8       # 8-bit color for better memory usage
-SSTIMEOUT = 300 # screen saver timeout, in seconds
-DEFAULT_THEME = "compaq"
-CURSOR_BLINK = True
-#FONT_FILE = "" # built-in font, 106 x 40 font
-#FONT_FILE="fonts/ter12b.pcf" # 106 x 34 font bold
-#FONT_FILE="fonts/ter14b.pcf" # 80 x 30 font bold
-FONT_FILE="fonts/ter16b.pcf" # 80 x 24 font bold
-#FONT_FILE="fonts/ter18b.pcf" # 64 x 22 font bold
 
 class ZMachine:
 # Color themes (expanded from A2Z Machine)
@@ -133,7 +121,7 @@ class ZMachine:
         self.dictionary = {}
         self.dictionary_size = 0
         self.dictionary_offset = 0
-        self.current_theme = DEFAULT_THEME
+        self.current_theme = settings.DEFAULT_THEME
         self.display = None
         self.processor = None
         self.input_buffer = ""
@@ -183,12 +171,12 @@ class ZMachine:
             # Fruit Jam has built-in DVI - no HSTX adapter needed
             # Use board-specific pin definitions
             fb = picodvi.Framebuffer(
-                DISPLAY_WIDTH, DISPLAY_HEIGHT,
+                settings.DISPLAY_WIDTH, settings.DISPLAY_HEIGHT,
                 clk_dp=board.CKP, clk_dn=board.CKN,
                 red_dp=board.D0P, red_dn=board.D0N,
                 green_dp=board.D1P, green_dn=board.D1N,
                 blue_dp=board.D2P, blue_dn=board.D2N,
-                color_depth=COLOR_DEPTH
+                color_depth=settings.COLOR_DEPTH
             )
 
             self.display = framebufferio.FramebufferDisplay(fb)
@@ -199,7 +187,7 @@ class ZMachine:
 
             # Create background
             theme = self.THEMES[self.current_theme]
-            bg_bitmap = displayio.Bitmap(DISPLAY_WIDTH, DISPLAY_HEIGHT, 1)
+            bg_bitmap = displayio.Bitmap(settings.DISPLAY_WIDTH, settings.DISPLAY_HEIGHT, 1)
             bg_palette = displayio.Palette(1)
             bg_palette[0] = theme['bg']
             bg_sprite = displayio.TileGrid(bg_bitmap, pixel_shader=bg_palette)
@@ -217,10 +205,10 @@ class ZMachine:
     def setup_text_display(self):
         """Setup full-screen text display"""
         theme = self.THEMES[self.current_theme]
-        if len(FONT_FILE) == 0:
+        if len(settings.FONT_FILE) == 0:
             font = terminalio.FONT # 106 x 40 font
         else:
-            font = bitmap_font.load_font(FONT_FILE)
+            font = bitmap_font.load_font(settings.FONT_FILE)
         bb = font.get_bounding_box()
         self.font_bb[0] = bb[0]
         self.font_bb[1] = bb[1]
@@ -234,8 +222,8 @@ class ZMachine:
         print(f"text display: {self.text_cols} x {self.text_rows}")
         self.text_buffer = [""] * self.text_rows
         # use for background
-        self.display_background = Rect(0, 0, DISPLAY_WIDTH,
-            DISPLAY_HEIGHT,
+        self.display_background = Rect(0, 0, settings.DISPLAY_WIDTH,
+            settings.DISPLAY_HEIGHT,
             stroke=0,outline=None,fill=theme['bg'])
 
         self.main_group.append(self.display_background)
@@ -268,7 +256,7 @@ class ZMachine:
         self.display_cursor = Rect(0,0,self.font_bb[0],self.font_bb[1],stroke=0,outline=None,fill=theme['text'])
         self.main_group.append(self.display_cursor)
         # use for screen saver
-        self.display_saver = Rect(0, DISPLAY_HEIGHT, DISPLAY_WIDTH, DISPLAY_HEIGHT, fill=0x000000)
+        self.display_saver = Rect(0, settings.DISPLAY_HEIGHT, settings.DISPLAY_WIDTH, settings.DISPLAY_HEIGHT, fill=0x000000)
         self.main_group.append(self.display_saver)
 
     def load_story(self, filename):
@@ -533,21 +521,21 @@ class ZMachine:
         self.display_cursor.x = len(self.text_buffer[self.cursor_row]) * self.font_bb[0]
         self.display_cursor.y = self.text_labels[self.cursor_row].y - self.font_bb[1]//2
         while True:
-            if CURSOR_BLINK and (time.monotonic() - blink_time) > .5:
+            if settings.CURSOR_BLINK and (time.monotonic() - blink_time) > .5:
                 # toggle cursor blinking
                 blink_time = time.monotonic()
-                if self.display_cursor.y < DISPLAY_HEIGHT:
+                if self.display_cursor.y < settings.DISPLAY_HEIGHT:
                     save_cursor_y = self.display_cursor.y
-                    self.display_cursor.y = DISPLAY_HEIGHT
+                    self.display_cursor.y = settings.DISPLAY_HEIGHT
                 else:
                     self.display_cursor.y = save_cursor_y
             time.sleep(0.001)  # Small delay to prevent blocking
-            if (time.monotonic() - start_time) > SSTIMEOUT:
+            if (time.monotonic() - start_time) > settings.SSTIMEOUT:
                 #turn on screen saver
                 self.display_saver.y = 0
                 # wait for keystroke before turning screen saver off
                 sys.stdin.read(1)
-                self.display_saver.y=DISPLAY_HEIGHT
+                self.display_saver.y=settings.DISPLAY_HEIGHT
                 #reset screen saver timer
                 start_time = time.monotonic()
             if supervisor.runtime.serial_bytes_available:
