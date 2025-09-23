@@ -1085,10 +1085,10 @@ class ZProcessor:
         #    codes[i] = 5
 
         while True:
-            codes[codes_count] = 5
-            codes_count += 1
             if codes_count >= 9:
                 break;
+            codes[codes_count] = 5
+            codes_count += 1
         # Pack codes into buffer
         buffer[0] = codes[0] << 10 | codes[1] << 5 | codes[2]
         buffer[1] = codes[3] << 10 | codes[4] << 5 | codes[5]
