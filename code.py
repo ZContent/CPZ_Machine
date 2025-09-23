@@ -63,10 +63,10 @@ SSTIMEOUT = 300 # screen saver timeout, in seconds
 DEFAULT_THEME = "compaq"
 CURSOR_BLINK = True
 #FONT_FILE = "" # built-in font, 106 x 40 font
-#FONT_FILE="fonts/ter12n.pcf" # 106 x 34 font
-#FONT_FILE="fonts/ter14n.pcf" # 80 x 30 font
-FONT_FILE="fonts/ter16n.pcf" # 80 x 24 font
-#FONT_FILE="fonts/ter18n.pcf" # 64 x 22 font
+#FONT_FILE="fonts/ter12b.pcf" # 106 x 34 font bold
+#FONT_FILE="fonts/ter14b.pcf" # 80 x 30 font bold
+FONT_FILE="fonts/ter16b.pcf" # 80 x 24 font bold
+#FONT_FILE="fonts/ter18b.pcf" # 64 x 22 font bold
 
 class ZMachine:
 # Color themes (expanded from A2Z Machine)
