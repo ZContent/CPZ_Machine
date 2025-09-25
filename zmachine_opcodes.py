@@ -808,7 +808,7 @@ class ZProcessor:
     and the third (byte) field contains the start offset of the token in the
     character buffer.
     """
-    def tokenize_line(self,char_buf, token_buf, dictionary, flag):
+    def tokenize_line(self, char_buf, token_buf, dictionary, flag):
         #self.zm.print_debug(3,f"tokenize line() char_buf:{char_buf} token_buf:{token_buf} dictionary:0x{dictionary:04x} flag:0x{flag:02x}")
         if h_type > 4:
             slen = self.zm.read_byte(char_buf + 1)
@@ -834,6 +834,8 @@ class ZProcessor:
         buff = ""
         for i in range(slen):
             buff += chr(self.zm.read_byte(char_buf + i))
+        # remove extra spaces within tokens
+        buff = " ".join(buff.split())
         # Initialise dictionary
         dictp = self.zm.read_word(dictionary)
         count = self.zm.read_byte(dictp)
