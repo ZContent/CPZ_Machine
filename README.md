@@ -12,7 +12,7 @@ the Zork series of games.
 
 ### Features
 
-- Support for different monospace font sizes to allow different row and column character sizes
+- Support for different monospace font sizes to allow different row and column character dimensions
 - Supports version 3 (.z3) games
 - Game selection at startup, or starting the game automatically if just one game installed
 - Select a retro color theme to change the font and background color
