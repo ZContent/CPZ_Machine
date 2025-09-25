@@ -13,6 +13,7 @@ the Zork series of games.
 ### Features
 
 - Support for different monospace font sizes to allow different row and column character sizes
+- Supports version 3 (.z3) games
 - Game selection at startup, or starting the game automatically if just one game installed
 - Select a retro color theme to change the font and background color
 - A screen saver is enabled after an amount of time of no keyboard entry
@@ -40,7 +41,6 @@ Copy these libraries to the `lib` folder on your CIRCUITPY drive:
 ```
 adafruit_display_text/
 adafruit_display_shapes/
-adafruit_hid/
 ```
 
 You can download these from the [CircuitPython Library Bundle](https://circuitpython.org/libraries).
@@ -58,7 +58,6 @@ You can download these from the [CircuitPython Library Bundle](https://circuitpy
 2. Extract and copy the required libraries to `CIRCUITPY/lib/`:
    - `adafruit_display_text/`
    - `adafruit_display_shapes/`
-   - `adafruit_hid/`
 
 ### 3. Install Z-Machine Code
 1. Copy the main files to the CIRCUITPY drive:
@@ -98,7 +97,7 @@ Popular games you can find online:
 ## Configuration
 
 ### Display Settings
-Edit the display configuration in `code.py`:
+Edit the display configuration in `settings.py`:
 
 ```python
 # Display configuration
@@ -205,13 +204,15 @@ Game movement shortcuts:
 ```
 CIRCUITPY/
 ├── code.py                 # Main Z-machine interpreter
+├── settings.py             # Customizable settings
 ├── zmachine_opcodes.py     # Opcode processor
 ├── lib/                    # CircuitPython libraries
 │   ├── adafruit_display_text/
-│   ├── adafruit_display_shapes/
-│   └── adafruit_hid/
-├── stories/                # Game files (.z3, .z5, .z8)
+│   └── adafruit_display_shapes/
+├── stories/                # Game files (.z3)
 │   ├── zork1.z3
+│   ├── zork2.z3
+│   └── zork3.z3
 └── saves/                  # Saved games
 ```
 
@@ -246,3 +247,8 @@ For general Z-machine and interactive fiction help:
 - [Interactive Fiction Database](https://ifdb.org/)
 - [Interactive Fiction Archive](https://www.ifarchive.org/)
 - [Z-machine specification](https://www.inform-fiction.org/zmachine/index.html)
+
+For CircuitPython and Fruit Jam help:
+- [CircuitPython Downloads](https://circuitpython.org/)
+- [Fruit Jam Learn Guide](https://learn.adafruit.com/adafruit-fruit-jam)
+- [Fruit Jam OS Learn Guide](https://learn.adafruit.com/fruit-jam-os)
