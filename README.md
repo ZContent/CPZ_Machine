@@ -2,6 +2,25 @@
 
 A port of the A2Z Machine Z-machine interpreter to CircuitPython with HSTX DVI video output.
 
+## Summary
+
+CPZ Machine is a Z-machine emulator for CircuitPython with HSTX DVI video output and keyboard support. It was developed for use with the Adafruit Fruit Jam.
+
+A Z-machine emulator is used for running text adventure games across different hardware platforms. Zork is probably the best known game for the Z-machine 
+but there are other games that can also run that were written for the Z-machine. CPZ Machine currently supports version 3 games, which includes
+the Zork series of games.
+
+### Features
+
+- Support for different monospace font sizes to allow different row and column character sizes
+- Game selection at startup, or starting the game automatically if just one game installed
+- Select a retro color theme to change the font and background color
+- A screen saver is enabled after an amount of time of no keyboard entry
+- Save and restore games to CPSAVES partition (recommended in case you are eaten by a grue :-) )
+- Multiple save/restore names allowed to save different locations during game
+- Blinking cursor!
+
+
 ## Hardware Requirements
 
 - **Adafruit Fruit Jam** (RP2350B with 16MB Flash + 8MB PSRAM)
@@ -20,6 +39,7 @@ Copy these libraries to the `lib` folder on your CIRCUITPY drive:
 ```
 adafruit_display_text/
 adafruit_display_shapes/
+adafruit_hid/
 ```
 
 You can download these from the [CircuitPython Library Bundle](https://circuitpython.org/libraries).
@@ -37,6 +57,7 @@ You can download these from the [CircuitPython Library Bundle](https://circuitpy
 2. Extract and copy the required libraries to `CIRCUITPY/lib/`:
    - `adafruit_display_text/`
    - `adafruit_display_shapes/`
+   - `adafruit_hid/`
 
 ### 3. Install Z-Machine Code
 1. Copy the main files to the CIRCUITPY drive:
@@ -186,7 +207,8 @@ CIRCUITPY/
 ├── zmachine_opcodes.py     # Opcode processor
 ├── lib/                    # CircuitPython libraries
 │   ├── adafruit_display_text/
-│   └├── adafruit_display_shapes/
+│   ├── adafruit_display_shapes/
+│   └── adafruit_hid/
 ├── stories/                # Game files (.z3, .z5, .z8)
 │   ├── zork1.z3
 └── saves/                  # Saved games
