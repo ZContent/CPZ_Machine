@@ -18,7 +18,7 @@ the Zork series of games.
 - A screen saver is enabled after an amount of time of no keyboard entry
 - Save and restore games to CPSAVES partition (recommended in case you are eaten by a grue :-) )
 - Multiple save/restore names allowed to save different locations during game
-- Works with Fruit Jam OS environment
+- Works as a stand-alone game or within the Fruit Jam OS environment
 - Blinking cursor!
 
 
