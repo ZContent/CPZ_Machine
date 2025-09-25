@@ -83,13 +83,14 @@ Popular games you can find online:
 ## Fruit Jam OS Installation Steps
 
 ### 1. Install Fruit Jam OS
-- Look at the learn guide for instructions.
+- Look at the [Fruit Jam Learn Guide](https://learn.adafruit.com/adafruit-fruit-jam) for instructions
 
-### 2. Create CPZ Folder
-- Create folder "dpz_machine" in the apps folder on the CIRCUITPY drive
+### 2. Create Folder
+- Create folder "cpz_machine" in the apps folder on the CIRCUITPY drive
 
 ### 3. Copy Files
 - Copy all files (including all folders) to the newly created folder on the CIRCUITPY drive
+- Modify "settings.py" file to select default font and color theme
 - Reboot and "CPZ Machine" icon should appear in the list of apps
 
 
