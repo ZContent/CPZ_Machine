@@ -129,6 +129,7 @@ class ZMachine:
         self.text_buffer = []
         self.cursor_row = -1
         self.scrolling = False
+        self.skip_scroll = False
         self.cursor_col = 0
         self.status_line = ""
         self.lines_written = 0
@@ -430,30 +431,44 @@ class ZMachine:
         #self.print_debug(3,f"add_text_line(): {line}")
         line = line.replace('\r', '\n')
         line = line.replace('\n', '')
+        self.lines_written += 1
         #print(f"cursor: label {self.cursor_row} of {len(self.text_labels)} labels")
         if self.cursor_row >= len(self.text_labels) - 1:
             self.scrolling = True
-        if self.scrolling:
-            # Scroll up
-            #self.print_debug(3,f"scrolling display")
-            for i in range(len(self.text_labels)):
-                self.text_labels[i].y -= self.font_bb[1]
-                if self.text_labels[i].y < self.font_bb[1]*2:
-                    self.text_buffer[i] = ""
-                    self.text_labels[i].text = ""
-                    self.text_labels[i].y = (len(self.text_labels)-1) * self.font_bb[1] + 2*self.font_bb[1]
-                    self.cursor_row = i
-                #self.print_debug(4,f"{i}: {self.text_labels[i].y} {'*' if self.cursor_row == i else ''}")
-            #self.print_debug(3,f"scrolling display done")
+        if not self.skip_scroll:
+            if self.scrolling:
+                # Scroll up
+                #self.print_debug(3,f"scrolling display")
+                for i in range(len(self.text_labels)):
+                    self.text_labels[i].y -= self.font_bb[1]
+                    if self.text_labels[i].y < self.font_bb[1]*2:
+                        self.text_buffer[i] = ""
+                        self.text_labels[i].text = ""
+                        self.text_labels[i].y = (len(self.text_labels)-1) * self.font_bb[1] + 2*self.font_bb[1]
+                        self.cursor_row = i
+                    #self.print_debug(4,f"{i}: {self.text_labels[i].y} {'*' if self.cursor_row == i else ''}")
+                #self.print_debug(3,f"scrolling display done")
+            else:
+                self.cursor_row = (self.cursor_row + 1) % (len(self.text_labels))
         else:
-            self.cursor_row = (self.cursor_row + 1) % (len(self.text_labels))
+            self.skip_scroll = False
 
-        self.text_buffer[self.cursor_row] = line
         self.text_buffer[self.cursor_row] = line
         self.text_labels[self.cursor_row].text = line
         self.cursor_col = 0
         self.display_cursor.x = len(self.text_buffer[self.cursor_row]) * self.font_bb[0]
         self.display_cursor.y = self.text_labels[self.cursor_row].y - self.font_bb[1]//2
+
+        if self.lines_written > self.text_rows - 4:
+            self.lines_written = 0
+            self.print_text(f"Press enter key to continue")
+            self.skip_scroll = True # don't move current line for user input
+            self.get_input()
+            # clear "Press enter" prompt and user entered response...
+            self.text_buffer[self.cursor_row] = ""
+            self.text_labels[self.cursor_row].text = ""
+            self.skip_scroll = True # next output goes where continue prmopt was
+
         #self.print_debug(3,f"add_text_line() done")
 
     def print_debug(self, level, msg):
@@ -511,6 +526,7 @@ class ZMachine:
         """Get input from stdin"""
         start_time = time.monotonic()
         blink_time = time.monotonic()
+        self.lines_written = 0
         save_cursor_y = self.display_cursor.y
         user_input = ""
         self.flush_input_buffer()
