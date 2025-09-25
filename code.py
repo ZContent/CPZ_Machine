@@ -819,7 +819,7 @@ class ZMachine:
         self.print_text("  help     - Show this help")
         self.print_text("  save     - Save current game")
         self.print_text("  restore  - Restore saved game")
-        self.print_text("  restart  - Restore saved game")
+        self.print_text("  restart  - Restart game")
         self.print_text("  themes   - List available themes")
         self.print_text("  theme <name> - Change color theme")
         self.print_text("  quit     - Exit interpreter")
