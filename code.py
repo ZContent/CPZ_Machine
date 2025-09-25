@@ -459,7 +459,7 @@ class ZMachine:
         self.display_cursor.x = len(self.text_buffer[self.cursor_row]) * self.font_bb[0]
         self.display_cursor.y = self.text_labels[self.cursor_row].y - self.font_bb[1]//2
 
-        if self.lines_written > self.text_rows - 4:
+        if self.lines_written > self.text_rows - 3:
             self.lines_written = 0
             self.print_text(f"Press enter key to continue")
             self.skip_scroll = True # don't move current line for user input
