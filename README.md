@@ -80,6 +80,19 @@ Popular games you can find online:
 - `zork3.z3` - Zork III: The Dungeon Master
 - `hhgg.z3` - The Hitchhiker's Guide to the Galaxy
 
+## Fruit Jam OS Installation Steps
+
+### 1. Install Fruit Jam OS
+- Look at the learn guide for instructions.
+
+### 2. Create CPZ Folder
+- Create folder "dpz_machine" in the apps folder on the CIRCUITPY drive
+
+### 3. Copy Files
+- Copy all files (including all folders) to the newly created folder on the CIRCUITPY drive
+- Reboot and "CPZ Machine" icon should appear in the list of apps
+
+
 ## Hardware Connections
 
 ### Video Output
