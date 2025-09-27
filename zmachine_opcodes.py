@@ -1019,7 +1019,7 @@ class ZProcessor:
 
                     """
                     Calculate the shift key. This magic. See the description in
-                    decode_text for more information on version 1 and 2 shift
+                    decode_string for more information on version 1 and 2 shift
                     key changes.
                     """
                     shift_state = ( table + ( prev_table * 2 ) ) % 3
@@ -1143,7 +1143,7 @@ class ZProcessor:
                         """
                         zscii_flag = 0
                         #self.zm.print_debug(4,f"write_char: 0x{int(zscii)|char_code:02x} ({chr(int(zscii)|char_code)})")
-                        self.write_zchar( int(zscii) | int(char_code))
+                        text += chr( int(zscii) | int(char_code))
                 elif char_code > 5:
                     char_code -= 6
                     if shift_state == 2 and char_code == 0:
@@ -1168,7 +1168,7 @@ class ZProcessor:
             if (word & 0x8000) != 0:  # End bit set
                 break
 
-        #self.zm.print_debug(4,f"decode_string() returned '{text}'")
+        #self.zm.print_debug(3,f"decode_string() returned '{text}'")
         return text
 
     def skip_string(self, addr):
