@@ -345,7 +345,7 @@ class ZProcessor:
                 #self.zm.print_debug(3,f"data stack({len(self.zm.call_stack[-1].data_stack)}): {self.zm.call_stack[-1].data_stack}")
                 return value
             else:
-                ##self.zm.print_debug(3,"warning: data stack is empty")
+                #self.zm.print_debug(3,"warning: data stack is empty")
                 self.zm.print_error("data stack is empty in read_variable()")
                 self.zm.game_running = False
                 return 0
@@ -386,7 +386,8 @@ class ZProcessor:
             # Global variable
             global_index = var_num - 16
             addr = self.zm.variables_addr + global_index*2
-            ##self.zm.print_debug(3,f"index:{global_index}, var mem start: 0x{self.zm.variables_addr:04X}, address: 0x{addr:04X}")
+            #self.zm.print_debug(3,f"variables_address:0x{addr:04x}")
+            #self.zm.print_debug(3,f"index:{global_index}, var mem start: 0x{self.zm.variables_addr:04X}, address: 0x{addr:04X}")
             self.zm.write_word(addr, value)
             #self.zm.print_debug(3,f"write global var {global_index} to 0x{addr:04x}: {value}")
 
@@ -405,7 +406,7 @@ class ZProcessor:
         try:
             opcode, operands, form, pccount, opcode_byte = self.fetch_instruction()
             self.instruction_count += 1
-            maxcount = 3000
+            maxcount = 6000
             if self.instruction_count > maxcount:
                 self.zm.print_error(f"{maxcount} instruction limit reached")
                 sys.exit()
@@ -747,21 +748,17 @@ class ZProcessor:
             # binary chop until word is found
             while chop > 0:
                 chop = int(chop / 2)
+                #self.zm.print_debug(4,f"word index at {word_index}, chop at {chop}")
                 # Calculate dictionary offset
                 if word_index > (self.zm.dictionary_size -1):
                     word_index = self.zm.dictionary_size -1
                 offset = self.zm.dictionary_offset + ( word_index * entry_size )
-                #self.zm.print_debug(4,f"index: {word_index}/{chop} compare: 0x{buff[0]:04x} with 0x{self.zm.read_word(offset + 0):04x}, offset: {offset}")
+                #self.zm.print_debug(4,f"index: {word_index}/{chop} compare: 0x{buff[0]:04x} with 0x{self.zm.read_word(offset + 0):04x}, offset: 0x{offset:04x}")
                 status1 = (buff[0] & mask[0]) - (self.zm.read_word(offset+0) & mask[0])
                 status2 = (buff[1] & mask[1]) - (self.zm.read_word(offset+2) & mask[1])
                 #status1 = buff[0] - self.zm.read_word(offset + 0)
                 #status2 = buff[1] - self.zm.read_word(offset + 2)
                 #status3 = buff[2] - self.zm.read_word(offset + 4)
-                #status = status1
-                ##self.zm.print_debug(0,f"status1:{status1==0} status2:{status2==0} status3:{status3==0}")
-                ##self.zm.print_debug(0,f"buff[0]:{buff[0]:04x} offset+0:{self.zm.read_word(offset+0):04x}")
-                ##self.zm.print_debug(0,f"buff[1]:{buff[1]:04x} offset+2:{self.zm.read_word(offset+2):04x}")
-                ##self.zm.print_debug(0,f"buff[2]:{buff[2]:04x} offset+4:{self.zm.read_word(offset+4):04x}")
                 #status = status1
                 #status = (status2 == 0)
                 #if h_type < 4:
@@ -771,6 +768,7 @@ class ZProcessor:
                 # if word matches then return dictionary offset
                 if status1 == 0 and status2 == 0: #  and (h_type < 4 or status3 == 0):
                     #self.zm.print_debug(3,f"'{token}' found at offset 0x{offset:04x} (binary search)")
+                    #self.zm.print_debug(3,f"token at offset 0x{offset:04x}: '{self.decode_string(offset)}'")
                     return offset
                 if status1 > 0 or (status1 == 0 and status2 > 0):
                     word_index += chop
@@ -811,7 +809,7 @@ class ZProcessor:
     def tokenize_line(self, char_buf, token_buf, dictionary, flag):
         #self.zm.print_debug(3,f"tokenize line() char_buf:{char_buf} token_buf:{token_buf} dictionary:0x{dictionary:04x} flag:0x{flag:02x}")
         if h_type > 4:
-            slen = self.zm.read_byte(char_buf + 1)
+            slen = self.zm.read_byte(char_buf)
             str_end = char_buf + 2 + slen
         else:
             #slen = self.zm.read_byte(char_buf)
@@ -832,7 +830,7 @@ class ZProcessor:
         tp = token_buf + 2;
 
         buff = ""
-        for i in range(slen):
+        for i in range(1,slen):
             buff += chr(self.zm.read_byte(char_buf + i))
         # remove extra spaces within tokens
         buff = " ".join(buff.split())
@@ -884,8 +882,6 @@ class ZProcessor:
         """Read string from user"""
         #self.zm.print_debug(3,f"op_sread() {operands}")
         if len(operands) >= 2:
-            text_buffer = operands[0]
-
             # Refresh status line
             if h_type < 4:
                 self.show_status()
@@ -914,8 +910,6 @@ class ZProcessor:
                 user_input = user_input[1:]
                 self.zm.debug += 1 if self.zm.debug <= 10 else 0
 
-            # Store in text buffer
-            #max_len = self.zm.read_byte(text_buffer)
             # fix, max_len always returns 0 after first blank line, hard coding max_len for now
             max_len = 100
 
@@ -923,14 +917,14 @@ class ZProcessor:
             user_input = user_input.lower().strip()
             for i in range(max_len):
                 if i < len(user_input):
-                    self.zm.write_byte(cbuf+i, ord(user_input[i]))
+                    self.zm.write_byte(cbuf+1+i, ord(user_input[i]))
                 else:
-                    self.zm.write_byte(cbuf+i,0)
-            # Tokenize the line, if a token buffer is present */
+                    self.zm.write_byte(cbuf+1+i,0)
+            self.zm.write_byte(cbuf, len(user_input))
 
+            # Tokenize the line, if a token buffer is present */
             if operands[1]:
-                #print(f"user_input:'{user_input}', buffer:'{text_buffer}'")
-                self.tokenize_line( text_buffer, operands[1], h_words_offset, 0 )
+                self.tokenize_line( cbuf, operands[1], h_words_offset, 0 )
 
     def store_result(self, value):
         """Store result of instruction"""
@@ -1106,7 +1100,7 @@ class ZProcessor:
 
     def decode_string(self, addr):
         """Decode Z-machine string"""
-        #print(f"debug: decode_string(addr=0x{addr:04x})")
+        #self.zm.print_debug(3,f"decode_string(addr=0x{addr:04x})")
         text = ""
         shift_state = 0
         shift_lock = 0
@@ -1174,6 +1168,7 @@ class ZProcessor:
             if (word & 0x8000) != 0:  # End bit set
                 break
 
+        #self.zm.print_debug(4,f"decode_string() returned '{text}'")
         return text
 
     def skip_string(self, addr):
@@ -1421,7 +1416,9 @@ class ZProcessor:
     Load a byte from an array of bytes
     """
     def op_loadb(self, operands):
+        #self.zm.print_debug(3,f"op_loadb(): {operands[0]:04x} + {operands[1]:04x}")
         result = self.zm.read_byte(operands[0] + operands[1])
+        #self.zm.print_debug(3,f"op_loadb() returned {result}")
         self.store_result(result)
 
     """
