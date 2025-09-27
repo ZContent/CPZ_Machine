@@ -467,7 +467,7 @@ class ZMachine:
             # clear "Press enter" prompt and user entered response...
             self.text_buffer[self.cursor_row] = ""
             self.text_labels[self.cursor_row].text = ""
-            self.skip_scroll = True # next output goes where continue prmopt was
+            self.skip_scroll = True # next output goes where continue prompt was
 
         #self.print_debug(3,f"add_text_line() done")
 
@@ -787,7 +787,7 @@ class ZMachine:
         """Main Z-machine interpreter loop"""
         self.game_running = True
         self.print_text("CPZ Machine: the CircuitPython Z Machine")
-        self.print_text("By Dan Cogliano, based on the A2Z Machine (DanTheGeek.com)")
+        self.print_text("By Dan Cogliano (DanTheGeek.com)")
         self.print_text(f"Display: {self.text_cols} cols x {self.text_rows} rows")
         self.print_text("=" * 50)
         # List available stories
@@ -803,7 +803,7 @@ class ZMachine:
             if story > 0:
                 if self.load_story(stories[story-1]):
                     self.print_text("Game loaded successfully!")
-                    self.print_text("Type 'help' for interpreter commands")
+                    self.print_text("Type 'help' for commands")
 
                     # Start Z-machine execution
                     self.execute_game()
@@ -831,20 +831,20 @@ class ZMachine:
 
     def show_help(self):
         """Show help information"""
-        self.print_text("CircuitPython Z-Machine Commands:")
+        self.print_text("CPZ Machine Commands:")
         self.print_text("  help     - Show this help")
         self.print_text("  save     - Save current game")
         self.print_text("  restore  - Restore saved game")
         self.print_text("  restart  - Restart game")
         self.print_text("  themes   - List available themes")
         self.print_text("  theme <name> - Change color theme")
-        self.print_text("  quit     - Exit interpreter")
+        self.print_text("  quit     - Exit CPZ Machine")
         self.print_text("Game commands depend on the loaded story.\n")
 
 # Initialize and run the Z-Machine
 def main():
     """Main entry point"""
-    print("Starting CircuitPython Z-Machine for Fruit Jam...")
+    print("Starting CPZ Machine for Fruit Jam...")
 
     zmachine = ZMachine()
 
@@ -856,8 +856,8 @@ def main():
     # Run the interpreter
     zmachine.run_interpreter()
 
-    zmachine.print_text("Z-Machine interpreter terminated")
-    print("Z-Machine interpreter terminated")
+    zmachine.print_text("CPZ Machine terminated")
+    print("CPZ Machine terminated")
     zmachine.print_text("Press a key to continue")
     print("Press a key to continue")
     sys.stdin.read(1)

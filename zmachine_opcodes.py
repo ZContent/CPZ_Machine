@@ -873,7 +873,7 @@ class ZProcessor:
                 self.zm.write_byte(2+token_buf + words*4 + 0, word >> 8)
                 self.zm.write_byte(2+token_buf + words*4 + 1, word & 0xff)
                 self.zm.write_byte(2+token_buf + words*4 + 2, len(token))
-                self.zm.write_byte(2+token_buf + words*4 + 3, buff.find(token))
+                self.zm.write_byte(2+token_buf + words*4 + 3, buff.find(token)+1)
                 words += 1
         self.zm.write_byte(token_buf,59)
         self.zm.write_byte(token_buf+1,words)
