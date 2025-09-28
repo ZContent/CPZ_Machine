@@ -565,6 +565,9 @@ class ZMachine:
                         self.text_buffer[self.cursor_row] = self.text_buffer[self.cursor_row][:-1]
                         self.text_labels[self.cursor_row].text = self.text_buffer[self.cursor_row]
                         self.display_cursor.x = len(self.text_buffer[self.cursor_row ]) * self.font_bb[0]
+                elif not (32 <= ord(key) and ord(key) <= 126):
+                    # non-printable char (function or cursor key perhaps) ignore rest of input
+                    self.flush_input_buffer()
                 else:
                     user_input += key
                     self.text_buffer[self.cursor_row] += key
@@ -858,9 +861,8 @@ def main():
 
     zmachine.print_text("CPZ Machine terminated")
     print("CPZ Machine terminated")
-    zmachine.print_text("Press a key to continue")
-    print("Press a key to continue")
-    sys.stdin.read(1)
+    zmachine.print_text(f"Press <Enter> key to continue")
+    zmachine.get_input()
     supervisor.reload()
 
 if __name__ == "__main__":
