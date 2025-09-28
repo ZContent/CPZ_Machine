@@ -747,7 +747,7 @@ class ZProcessor:
         if self.zm.dictionary_size > 0:
             # binary chop until word is found
             while chop > 0:
-                chop = int(chop / 2)
+                chop = chop // 2
                 #self.zm.print_debug(4,f"word index at {word_index}, chop at {chop}")
                 # Calculate dictionary offset
                 if word_index > (self.zm.dictionary_size -1):
@@ -858,7 +858,7 @@ class ZProcessor:
             chop = 1
             while True:
                 chop *= 2
-                word_index = int(word_index / 2)
+                word_index = word_index // 2
                 if word_index == 0:
                     break
         max_tokens = self.zm.read_byte(token_buf)

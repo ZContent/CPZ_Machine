@@ -4,11 +4,26 @@ A port of the A2Z Machine Z-machine interpreter to CircuitPython with HSTX DVI v
 
 ## Summary
 
-CPZ Machine is a Z-machine emulator for CircuitPython with HSTX DVI video output and keyboard support. It was developed for use with the Adafruit Fruit Jam.
+CPZ Machine for the Adafruit Fruit Jam:
+
+A native Z Machine for the Adafruit Fruit Jam running CircuitPython for playing Zork and similar games
+
+Latest version of CPZ Machine can be [found here.](https://github.com/ZContent/CPZ_Machine)
+
+More info on the Adafruit Fruit Jam can be [found here.](https://www.adafruit.com/product/6200)
+
+Written by Dan Cogliano
+Web: https://DanTheGeek.com
+BlueSky: @cogliano.bsky.social
+
+This work is based on A2Z Machine by Dan Cogliano 
+and JZip by John Holder
 
 A Z-machine emulator is used for running text adventure games across different hardware platforms. Zork is probably the best known game for the Z-machine 
 but there are other games that can also run that were written for the Z-machine. CPZ Machine currently supports version 3 games, which includes
 the Zork series of games.
+
+![screen shot](https://github.com/ZContent/CPZ_Machine/cpz_screenshot.jpg)
 
 ### Features
 

@@ -1,19 +1,40 @@
 """
-CircuitPython Z-Machine Implementation for Adafruit Fruit Jam
-Port of A2Z Machine to CircuitPython with built-in DVI output
-Based on original A2Z Machine by Dan Cogliano and JZip 2.1
+CPZ Machine for the Adafruit Fruit Jam:
+A native Z Machine for the Adafruit Fruit Jam running Circuit
+Python for playing Zork and similar games
+
+Latest version of CPZ Machine can be found here:
+https://github.com/ZContent/CPZ_Machine
+
+More info on the Adafruit Fruit Jam can be found here:
+https://www.adafruit.com/product/6200
+
+Written by Dan Cogliano
+Web: https://DanTheGeek.com
+BlueSky: @cogliano.bsky.social
+
+This work is based on A2Z Machine by Dan Cogliano
+and JZip by John Holder
 
 Hardware Requirements:
 - Adafruit Fruit Jam (RP2350B with 16MB Flash + 8MB PSRAM)
 - HDMI cable connected to built-in DVI port
+- USB keyboard
 
 Features:
-- Support for Z-machine version 3
-- Multiple color themes (Default, Amiga, Compaq, C64, etc.)
-- Full screen text display via DVI/HDMI
-- Save/restore game functionality
-- Drag-and-drop story file management
-- USB keyboard input support
+
+- Support for different monospace font sizes to allow different
+  row and column character dimensions
+- Supports version 3 (.z3) games
+- Game selection at startup, or starting the game automatically
+  if just one game installed
+- Select a retro color theme to change the font and background color
+- A screen saver is enabled after an amount of time of no keyboard entry
+- Save and restore games to CPSAVES partition (recommended in case
+  you are eaten by a grue :-) )
+- Multiple save/restore names allowed to save different locations during game
+- Works as a stand-alone game or within the Fruit Jam OS environment
+- Blinking cursor!
 
 Libraries Required:
 - adafruit_display_text
@@ -126,7 +147,6 @@ class ZMachine:
         self.processor = None
         self.input_buffer = ""
         self.output_buffer = []
-        self.text_buffer = []
         self.cursor_row = -1
         self.scrolling = False
         self.skip_scroll = False
@@ -221,7 +241,6 @@ class ZMachine:
         self.text_cols = self.display.width // self.font_bb[0]
         self.text_rows = self.display.height // self.font_bb[1]
         print(f"text display: {self.text_cols} x {self.text_rows}")
-        self.text_buffer = [""] * self.text_rows
         # use for background
         self.display_background = Rect(0, 0, settings.DISPLAY_WIDTH,
             settings.DISPLAY_HEIGHT,
@@ -417,15 +436,6 @@ class ZMachine:
             self.add_text_line(line)
         #self.print_debug(3,"print_text() done")
 
-    def append_text_to_line(self, line):
-        """ append text to cursor line"""
-        self.text_buffer[self.cursor_row] += line
-        #self.cursor_row += line
-
-    def remove_text_from_line(self, count = 1):
-        for i in range(count):
-            self.text_buffer[self.cursor_row] = self.text_buffer[self.cursor_row][:-1]
-
     def add_text_line(self, line):
         """Add a line of text to the display"""
         #self.print_debug(3,f"add_text_line(): {line}")
@@ -442,7 +452,6 @@ class ZMachine:
                 for i in range(len(self.text_labels)):
                     self.text_labels[i].y -= self.font_bb[1]
                     if self.text_labels[i].y < self.font_bb[1]*2:
-                        self.text_buffer[i] = ""
                         self.text_labels[i].text = ""
                         self.text_labels[i].y = (len(self.text_labels)-1) * self.font_bb[1] + 2*self.font_bb[1]
                         self.cursor_row = i
@@ -453,10 +462,9 @@ class ZMachine:
         else:
             self.skip_scroll = False
 
-        self.text_buffer[self.cursor_row] = line
         self.text_labels[self.cursor_row].text = line
         self.cursor_col = 0
-        self.display_cursor.x = len(self.text_buffer[self.cursor_row]) * self.font_bb[0]
+        self.display_cursor.x = len(self.text_labels[self.cursor_row].text) * self.font_bb[0]
         self.display_cursor.y = self.text_labels[self.cursor_row].y - self.font_bb[1]//2
 
         if self.lines_written > self.text_rows - 3:
@@ -465,7 +473,6 @@ class ZMachine:
             self.skip_scroll = True # don't move current line for user input
             self.get_input()
             # clear "Press enter" prompt and user entered response...
-            self.text_buffer[self.cursor_row] = ""
             self.text_labels[self.cursor_row].text = ""
             self.skip_scroll = True # next output goes where continue prompt was
 
@@ -534,7 +541,7 @@ class ZMachine:
             sys.stdin.read(1) # clear out any input data before beginning
 
         done = False
-        self.display_cursor.x = len(self.text_buffer[self.cursor_row]) * self.font_bb[0]
+        self.display_cursor.x = len(self.text_labels[self.cursor_row].text) * self.font_bb[0]
         self.display_cursor.y = self.text_labels[self.cursor_row].y - self.font_bb[1]//2
         while True:
             if settings.CURSOR_BLINK and (time.monotonic() - blink_time) > .5:
@@ -562,17 +569,15 @@ class ZMachine:
                 elif ord(key) == 8: # backspace
                     if len(user_input) > 0:
                         user_input = user_input[:-1] # remove last character
-                        self.text_buffer[self.cursor_row] = self.text_buffer[self.cursor_row][:-1]
-                        self.text_labels[self.cursor_row].text = self.text_buffer[self.cursor_row]
-                        self.display_cursor.x = len(self.text_buffer[self.cursor_row ]) * self.font_bb[0]
+                        self.text_labels[self.cursor_row].text = self.text_labels[self.cursor_row].text[:-1]
+                        self.display_cursor.x = len(self.text_labels[self.cursor_row].text) * self.font_bb[0]
                 elif not (32 <= ord(key) and ord(key) <= 126):
                     # non-printable char (function or cursor key perhaps) ignore rest of input
                     self.flush_input_buffer()
                 else:
                     user_input += key
-                    self.text_buffer[self.cursor_row] += key
-                    self.text_labels[self.cursor_row].text = self.text_buffer[self.cursor_row]
-                    self.display_cursor.x = len(self.text_buffer[self.cursor_row]) * self.font_bb[0]
+                    self.text_labels[self.cursor_row].text += key
+                    self.display_cursor.x = len(self.text_labels[self.cursor_row].text) * self.font_bb[0]
                 if done:
                     done = False
                     cmd = user_input.strip().lower()
