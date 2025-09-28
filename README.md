@@ -23,7 +23,7 @@ A Z-machine emulator is used for running text adventure games across different h
 but there are other games that can also run that were written for the Z-machine. CPZ Machine currently supports version 3 games, which includes
 the Zork series of games.
 
-![screen shot](https://github.com/ZContent/CPZ_Machine/cpz_screenshot.jpg)
+![screen shot](https://raw.githubusercontent.com/ZContent/CPZ_Machine/refs/heads/main/cpz_screenshot.jpg)
 
 ### Features
 
